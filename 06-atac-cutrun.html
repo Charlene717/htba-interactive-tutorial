@@ -1,0 +1,206 @@
+<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Ch 6: ATAC-seq 與 CUT&RUN — HTBA</title>
+<link rel="stylesheet" href="styles.css">
+</head><body>
+<nav class="top-nav"><div class="top-nav-inner">
+  <a href="index.html" class="top-nav-brand"><span>🧬</span> <span data-zh="高通量分析與整合" data-en="HTBA Tutorial">高通量分析與整合</span></a>
+  <ul class="top-nav-links">
+    <li><a href="01-overview.html">01</a></li><li><a href="02-experimental-design.html">02</a></li><li><a href="03-upstream-pipeline.html">03</a></li><li><a href="04-genomics-variants.html">04</a></li><li><a href="05-structural-variants.html">05</a></li><li><a href="06-atac-cutrun.html" class="active">06</a></li><li><a href="07-dna-methylation.html">07</a></li><li><a href="08-bulk-rnaseq.html">08</a></li><li><a href="09-scrnaseq.html">09</a></li><li><a href="10-spatial-omics.html">10</a></li><li><a href="11-long-read-rna.html">11</a></li><li><a href="12-proteomics.html">12</a></li><li><a href="13-metabolomics.html">13</a></li><li><a href="14-batch-correction.html">14</a></li><li><a href="15-multiomics-integration.html">15</a></li><li><a href="16-spatial-singlecell.html">16</a></li><li><a href="17-functional-enrichment.html">17</a></li><li><a href="18-network-analysis.html">18</a></li><li><a href="19-foundation-models.html">19</a></li><li><a href="20-reproducibility.html">20</a></li>
+    <li><a href="references/index.html" data-zh="📚 參考資料" data-en="📚 References">📚 參考資料</a></li>
+  </ul>
+</div></nav>
+<div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
+
+<header class="page-hero"><div class="step-badge">CH 6 / 20 · BLOCK 2 GENOMICS</div>
+<h1 data-zh="ATAC-seq 與 CUT&amp;RUN / CUT&amp;Tag" data-en="ATAC-seq & CUT&RUN / CUT&Tag">ATAC-seq 與 CUT&amp;RUN</h1>
+<p class="subtitle" data-lang="zh">染色質可及性與蛋白-DNA 交互作用：Tn5、MACS、TF motif、scATAC 一次學完。</p>
+<p class="subtitle" data-lang="en">Chromatin accessibility and protein–DNA interactions: Tn5, MACS, TF motifs, and scATAC — in one chapter.</p>
+</header>
+
+<main class="content-wrap">
+
+<section class="section">
+<div class="section-label" data-zh="技術原理" data-en="PRINCIPLES">技術原理</div>
+<h2 data-zh="一、三種主要技術一覽" data-en="I. Three Core Technologies">一、三種技術</h2>
+<div class="card-grid cols-3">
+<div class="card"><h4>🪟 <span data-zh="ATAC-seq (2013)" data-en="ATAC-seq (2013)">ATAC-seq</span></h4>
+<div data-lang="zh"><p>高活性 <strong>Tn5 轉位酶</strong>同時切割與標記 open chromatin。Buenrostro 2013。所需細胞少（50k–500k），3 h 完成 library。輸出：可及性 peaks，反映 enhancer / promoter / TF footprint。</p></div>
+<div data-lang="en"><p>Hyperactive <strong>Tn5 transposase</strong> simultaneously cuts and tags open chromatin (Buenrostro 2013). Few cells needed (50k–500k), library in 3 h. Output: accessibility peaks reflecting enhancers/promoters/TF footprints.</p></div>
+</div>
+<div class="card"><h4>✂️ <span data-zh="CUT&RUN (2017)" data-en="CUT&RUN (2017)">CUT&amp;RUN</span></h4>
+<div data-lang="zh"><p>抗體 + pA-MNase 在原位切下 TF / histone 周圍的 DNA。Henikoff lab 2017。比 ChIP-seq 少 10× 細胞、雜訊更低，已是 TF binding 與 histone mark 的主流。</p></div>
+<div data-lang="en"><p>Antibody + pA-MNase digests DNA around TF/histone in situ (Henikoff lab 2017). 10× fewer cells than ChIP-seq, lower background — now the standard for TF binding and histone marks.</p></div>
+</div>
+<div class="card"><h4>🏷️ <span data-zh="CUT&Tag (2019)" data-en="CUT&Tag (2019)">CUT&amp;Tag</span></h4>
+<div data-lang="zh"><p>把 MNase 換成 <strong>pA-Tn5</strong>：抗體靶向後 Tn5 直接 tagment，連 library prep 一起跳過。更少細胞、更快、可做 scCUT&amp;Tag。</p></div>
+<div data-lang="en"><p>Replace MNase with <strong>pA-Tn5</strong>: antibody-tethered Tn5 tagments directly, skipping library prep steps. Even fewer cells, faster, enables scCUT&Tag.</p></div>
+</div>
+</div>
+<div class="callout warn"><span class="callout-icon">⚠️</span><div>
+<span data-lang="zh"><strong>選型：</strong>想看「開了哪些區域」→ ATAC；想看「哪個 TF / histone mark 在哪些位點」→ CUT&amp;RUN（高解析度）或 CUT&amp;Tag（少細胞、scale-up）。傳統 ChIP-seq 只在缺乏抗體效能驗證資料時建議。</span>
+<span data-lang="en"><strong>Selection:</strong> Want "which regions are open?" → ATAC. Want "which TF/histone-mark binds where?" → CUT&RUN (high res) or CUT&Tag (few cells, scale-up). Reserve classic ChIP-seq for cases lacking antibody-validation data.</span>
+</div></div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="分析流程" data-en="PIPELINE">分析流程</div>
+<h2 data-zh="二、Peak calling 與下游" data-en="II. Peak Calling and Downstream">二、Peak calling 與下游</h2>
+<div class="workflow">
+<div class="workflow-step" data-step="1"><h4 data-zh="比對與過濾" data-en="Alignment & filter">比對與過濾</h4><p data-lang="zh">bwa-mem2 → MarkDuplicates → 移除 MAPQ &lt; 30、blacklist (ENCODE)、粒線體 reads（ATAC 特別重要：Tn5 偏好 mt DNA）。</p><p data-lang="en">bwa-mem2 → MarkDuplicates → drop MAPQ &lt; 30, ENCODE blacklist, and mitochondrial reads (critical for ATAC — Tn5 prefers mtDNA).</p></div>
+<div class="workflow-step" data-step="2"><h4 data-zh="位移校正 (ATAC)" data-en="Tn5 shift (ATAC)">Tn5 shift</h4><p data-lang="zh">+ strand +4 bp、− strand −5 bp 校正 Tn5 9 bp staggered cut（footprint 分析必做）。</p><p data-lang="en">+ strand +4 bp, − strand −5 bp to correct Tn5's 9 bp staggered cut (mandatory for footprinting).</p></div>
+<div class="workflow-step" data-step="3"><h4>Peak calling</h4><p data-lang="zh"><strong>MACS3</strong>（取代 MACS2）：ATAC 用 <code>--shift -75 --extsize 150 -f BAMPE --nomodel</code>；CUT&amp;RUN 用 SEACR 或 MACS3 narrow。</p><p data-lang="en"><strong>MACS3</strong> (replaces MACS2): ATAC uses <code>--shift -75 --extsize 150 -f BAMPE --nomodel</code>; CUT&RUN uses SEACR or MACS3 narrow.</p></div>
+<div class="workflow-step" data-step="4"><h4 data-zh="差異可及性 (DAR)" data-en="Differential accessibility (DAR)">差異可及性</h4><p data-lang="zh">取所有樣本 peak union → 計算 counts in peaks → <strong>DESeq2</strong> 或 <strong>edgeR</strong> 跑 condition contrast，產出 DARs。</p><p data-lang="en">Peak union across samples → counts in peaks → <strong>DESeq2</strong> or <strong>edgeR</strong> for contrasts → DARs.</p></div>
+<div class="workflow-step" data-step="5"><h4>Motif / TF / annotation</h4><p data-lang="zh"><strong>HOMER findMotifsGenome.pl</strong>、<strong>MEME-ChIP</strong>、<strong>chromVAR</strong>（scATAC）、<strong>ChIPseeker</strong> 註釋到 promoter/intergenic/UTR。</p><p data-lang="en"><strong>HOMER findMotifsGenome.pl</strong>, <strong>MEME-ChIP</strong>, <strong>chromVAR</strong> (scATAC), <strong>ChIPseeker</strong> for promoter/intergenic/UTR annotation.</p></div>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="互動：片段長度" data-en="INTERACTIVE">互動 — 片段長度</h2>
+<h2 data-zh="三、ATAC 片段長度分佈解讀" data-en="III. Reading the ATAC Fragment-length Distribution">三、片段長度分佈</h2>
+<div data-lang="zh"><p>高品質 ATAC 應在 ~50, ~200, ~400 bp 看到清楚峰，分別代表 nucleosome-free、mono-nucleosome、di-nucleosome 區段。如果只有單一寬峰 → 過度消化或染色質結構崩壞。</p></div>
+<div data-lang="en"><p>High-quality ATAC shows clear peaks at ~50, ~200, ~400 bp — nucleosome-free, mono-, and di-nucleosome fragments. A single broad peak indicates over-tagmentation or chromatin disruption.</p></div>
+<div class="interactive-panel">
+<div class="sim-stats"><span class="sim-stat pass" id="atQ">Quality: —</span></div>
+<div class="slider-group"><label><span data-zh="Tn5 用量 (×標準)" data-en="Tn5 amount (× std)">Tn5 用量</span><span id="atTv">1.0</span></label><input type="range" id="atT" min="0.2" max="4" value="1.0" step="0.1"></div>
+<div class="slider-group"><label><span data-zh="細胞數 (k)" data-en="Cells (k)">細胞數 (k)</span><span id="atNv">50</span></label><input type="range" id="atN" min="5" max="500" value="50" step="5"></div>
+<canvas id="atCanvas" style="background:var(--c-surface-alt);border-radius:8px;width:100%;height:220px"></canvas>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="scATAC" data-en="scATAC">scATAC</h2>
+<h2 data-zh="四、單細胞 ATAC：ArchR / Signac" data-en="IV. Single-cell ATAC: ArchR / Signac">四、scATAC</h2>
+<div data-lang="zh"><p>10X scATAC 後常用兩個工具：</p>
+<ul><li><strong>ArchR</strong>（Granja 2021）：速度與記憶體效能最佳、HDF5-based arrow files；建議 ≥50k cells 用 ArchR。</li><li><strong>Signac</strong>（Stuart 2021）：與 Seurat 無縫整合，小 cohort 與 multi-modal 場景方便。</li></ul>
+<p>核心輸出：cell-by-peak matrix、TF deviation (chromVAR)、gene-activity score、co-accessibility (Cicero)、cell-type marker peaks。可與 scRNA WNN 整合（Ch 15）。</p></div>
+<div data-lang="en"><p>After 10X scATAC, two go-to tools:</p>
+<ul><li><strong>ArchR</strong> (Granja 2021): best speed/RAM, HDF5-based arrow files; recommended for ≥50k cells.</li><li><strong>Signac</strong> (Stuart 2021): seamless Seurat integration, convenient for small cohorts and multi-modal setups.</li></ul>
+<p>Core outputs: cell-by-peak matrix, TF deviation (chromVAR), gene-activity score, co-accessibility (Cicero), cell-type marker peaks. Can be integrated with scRNA via WNN (Ch 15).</p></div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="程式碼" data-en="CODE">程式碼</div>
+<h2 data-zh="五、完整 ATAC 分析" data-en="V. Complete ATAC Analysis">五、實作</h2>
+<div class="code-tabs"><div class="code-tab-btns"><button class="code-tab-btn active" onclick="switchTab(this,'sh1')">Shell / MACS3</button><button class="code-tab-btn" onclick="switchTab(this,'r1')">R / Signac</button><button class="code-tab-btn" onclick="switchTab(this,'r2')">R / ArchR</button></div>
+<div class="code-tab-content active" id="sh1"><pre><span class="comment"># Bulk ATAC：bwa-mem2 → samtools → MACS3</span>
+<span class="func">bwa-mem2</span> mem -t <span class="num">16</span> ref.fa s_R1.fq.gz s_R2.fq.gz | \
+<span class="func">samtools</span> sort -@ <span class="num">8</span> -o s.bam -
+<span class="func">samtools</span> index s.bam
+
+<span class="comment"># 過濾 + Tn5 shift（deeptools alignmentSieve）</span>
+<span class="func">alignmentSieve</span> -b s.bam -o s.shift.bam --ATACshift \
+               --minMappingQuality <span class="num">30</span> --blackListFileName blacklist.bed
+
+<span class="comment"># Peak calling（ATAC-specific）</span>
+<span class="func">macs3</span> callpeak -t s.shift.bam -f BAMPE -g hs \
+            --nomodel --shift -<span class="num">75</span> --extsize <span class="num">150</span> \
+            -n sample --outdir peaks/ -q <span class="num">0.05</span>
+
+<span class="comment"># 差異分析（DESeq2 in R）</span>
+<span class="func">multiBamSummary</span> BED-file --BED peaks/sample_peaks.narrowPeak \
+                 --bamfiles c1.bam c2.bam t1.bam t2.bam -o counts.npz</pre></div>
+<div class="code-tab-content" id="r1"><pre><span class="comment"># Signac — scATAC quickstart</span>
+<span class="func">library</span>(Signac); <span class="func">library</span>(Seurat)
+counts &lt;- <span class="func">Read10X_h5</span>(<span class="str">"filtered_peak_bc_matrix.h5"</span>)
+meta   &lt;- <span class="func">read.csv</span>(<span class="str">"singlecell.csv"</span>, row.names=<span class="num">1</span>)
+
+chrom &lt;- <span class="func">CreateChromatinAssay</span>(counts = counts, sep = <span class="func">c</span>(<span class="str">":"</span>, <span class="str">"-"</span>),
+            fragments = <span class="str">"fragments.tsv.gz"</span>, genome = <span class="str">"hg38"</span>, min.cells = <span class="num">10</span>)
+obj &lt;- <span class="func">CreateSeuratObject</span>(chrom, assay = <span class="str">"peaks"</span>, meta.data = meta)
+
+obj &lt;- <span class="func">RunTFIDF</span>(obj) |&gt; <span class="func">FindTopFeatures</span>(min.cutoff=<span class="str">"q5"</span>) |&gt;
+       <span class="func">RunSVD</span>() |&gt; <span class="func">RunUMAP</span>(reduction=<span class="str">"lsi"</span>, dims=<span class="num">2</span>:<span class="num">30</span>) |&gt;
+       <span class="func">FindNeighbors</span>(reduction=<span class="str">"lsi"</span>, dims=<span class="num">2</span>:<span class="num">30</span>) |&gt;
+       <span class="func">FindClusters</span>()
+<span class="func">DimPlot</span>(obj, label=<span class="kw">TRUE</span>)</pre></div>
+<div class="code-tab-content" id="r2"><pre><span class="comment"># ArchR — 大規模 scATAC（建議 ≥50k cells）</span>
+<span class="func">library</span>(ArchR)
+<span class="func">addArchRGenome</span>(<span class="str">"hg38"</span>)
+ArrowFiles &lt;- <span class="func">createArrowFiles</span>(inputFiles = <span class="str">"fragments.tsv.gz"</span>,
+                              sampleNames = <span class="str">"sample1"</span>, minTSS=<span class="num">4</span>, minFrags=<span class="num">1000</span>)
+proj &lt;- <span class="func">ArchRProject</span>(ArrowFiles = ArrowFiles, outputDirectory=<span class="str">"out"</span>)
+proj &lt;- <span class="func">addIterativeLSI</span>(proj) |&gt;
+         <span class="func">addClusters</span>(reducedDims=<span class="str">"IterativeLSI"</span>) |&gt;
+         <span class="func">addUMAP</span>(reducedDims=<span class="str">"IterativeLSI"</span>) |&gt;
+         <span class="func">addGroupCoverages</span>() |&gt; <span class="func">addReproduciblePeakSet</span>() |&gt;
+         <span class="func">addPeakMatrix</span>() |&gt; <span class="func">addMotifAnnotations</span>(motifSet=<span class="str">"cisbp"</span>)
+<span class="func">plotEmbedding</span>(proj, name=<span class="str">"Clusters"</span>)</pre></div>
+</div>
+</section>
+
+<section class="quiz-section">
+<h3>📝 <span data-zh="自我檢測" data-en="Self-Check">自我檢測</span></h3>
+<div class="quiz-q" data-answer="1" data-exp-zh="Tn5 9 bp staggered cut 需要 + strand +4、− strand −5 校正才能正確標示插入位置。" data-exp-en="Tn5's 9 bp staggered cut requires + strand +4, − strand −5 correction for accurate insertion sites.">
+<p data-lang="zh">1. ATAC-seq 比對後做 Tn5 位移校正的常見公式？</p>
+<p data-lang="en">1. Standard Tn5 shift correction for ATAC-seq?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">+5, −4</div><div class="quiz-opt" data-idx="1">+4, −5</div><div class="quiz-opt" data-idx="2">+9, −9</div><div class="quiz-opt" data-idx="3"><span data-lang="zh">不需要</span><span data-lang="en">No shift</span></div>
+</div><div class="quiz-feedback"></div></div>
+<div class="quiz-q" data-answer="2" data-exp-zh="CUT&Tag 將抗體靶向後直接由 pA-Tn5 完成 tagmentation，可降至 ~1000 細胞並適合 single-cell。" data-exp-en="CUT&Tag tethers pA-Tn5 to the antibody, allowing tagmentation in situ — works with ~1000 cells and scales to single-cell.">
+<p data-lang="zh">2. CUT&amp;Tag 相對 CUT&amp;RUN 的主要優勢？</p>
+<p data-lang="en">2. Main advantage of CUT&Tag over CUT&RUN?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0"><span data-lang="zh">A. 更貴</span><span data-lang="en">A. More expensive</span></div>
+<div class="quiz-opt" data-idx="1"><span data-lang="zh">B. 需要更多細胞</span><span data-lang="en">B. Needs more cells</span></div>
+<div class="quiz-opt" data-idx="2"><span data-lang="zh">C. 用 pA-Tn5 直接 tagment，省 library prep、可 single-cell</span><span data-lang="en">C. pA-Tn5 tagments directly, skipping prep; enables single-cell</span></div>
+<div class="quiz-opt" data-idx="3"><span data-lang="zh">D. 不需要抗體</span><span data-lang="en">D. No antibody needed</span></div>
+</div><div class="quiz-feedback"></div></div>
+<div class="quiz-q" data-answer="3" data-exp-zh="ArchR 用 HDF5 arrow files、速度最佳，是大規模 scATAC（≥50k cells）的主流選擇。" data-exp-en="ArchR uses HDF5 arrow files with best speed — the go-to for large scATAC (≥50k cells).">
+<p data-lang="zh">3. 處理 100k+ 細胞 scATAC 最推薦的工具？</p>
+<p data-lang="en">3. Recommended tool for 100k+ cell scATAC?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">MACS3</div><div class="quiz-opt" data-idx="1">VEP</div><div class="quiz-opt" data-idx="2">Bismark</div><div class="quiz-opt" data-idx="3">ArchR</div>
+</div><div class="quiz-feedback"></div></div>
+</section>
+
+<nav class="page-nav">
+<a href="05-structural-variants.html"><span class="nav-dir" data-zh="← 上一章" data-en="← Prev">← 上一章</span><span class="nav-title" data-zh="Ch 5 · 結構變異與長讀定序" data-en="Ch 5 · Structural Variants &amp; Long-read Sequencing">Ch 5 · 結構變異與長讀定序</span></a>
+<a href="07-dna-methylation.html"><span class="nav-dir" data-zh="下一章 →" data-en="Next →">下一章 →</span><span class="nav-title" data-zh="Ch 7 · DNA 甲基化 (Methylation)" data-en="Ch 7 · DNA Methylation">Ch 7 · DNA 甲基化 (Methylation)</span></a>
+</nav>
+</main>
+
+<footer class="site-footer">© Charlene — HTBA Interactive Tutorial</footer>
+<script src="i18n.js"></script>
+<script>
+window.addEventListener('scroll',()=>{const h=document.documentElement;document.getElementById('progressBar').style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100+'%';});
+function switchTab(b,id){const p=b.closest('.code-tabs');p.querySelectorAll('.code-tab-btn').forEach(x=>x.classList.remove('active'));p.querySelectorAll('.code-tab-content').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById(id).classList.add('active');}
+document.querySelectorAll('.quiz-q').forEach(q=>{const ans=+q.dataset.answer;q.querySelectorAll('.quiz-opt').forEach(o=>{o.onclick=()=>{if(q.dataset.done)return;q.dataset.done=1;const i=+o.dataset.idx,fb=q.querySelector('.quiz-feedback');q.querySelectorAll('.quiz-opt').forEach(x=>{if(+x.dataset.idx===ans)x.classList.add('correct');else if(+x.dataset.idx===i)x.classList.add('wrong');});if(i===ans){fb.className='quiz-feedback show correct-fb';fb.textContent='✓ '+(window.I18n&&window.I18n.get()==='en'?q.dataset.expEn:q.dataset.expZh);}else{fb.className='quiz-feedback show wrong-fb';fb.textContent='✗ '+(window.I18n&&window.I18n.get()==='en'?q.dataset.expEn:q.dataset.expZh);}};});});
+
+// ATAC fragment length sim
+const cv=document.getElementById('atCanvas'),ctx=cv.getContext('2d');
+function draw(){
+  const t=+document.getElementById('atT').value, n=+document.getElementById('atN').value;
+  document.getElementById('atTv').textContent=t.toFixed(1);document.getElementById('atNv').textContent=n;
+  const w=cv.width=cv.offsetWidth, h=cv.height=cv.offsetHeight;
+  ctx.fillStyle='#eef5f7';ctx.fillRect(0,0,w,h);
+  // build distribution
+  const xs=[],ys=[];const overDigest=t>1.6, underDigest=t<0.6;
+  for(let bp=0;bp<800;bp+=4){
+    let y=0;
+    // nucleosome-free peak ~50
+    y+=Math.exp(-Math.pow((bp-50)/(overDigest?80:25),2))*(overDigest?1.5:1);
+    // mono ~200
+    y+=Math.exp(-Math.pow((bp-200)/35,2))*(overDigest?0.3:1);
+    // di ~400
+    y+=Math.exp(-Math.pow((bp-400)/45,2))*(overDigest?0.1:0.6);
+    // tri ~600
+    y+=Math.exp(-Math.pow((bp-600)/55,2))*(overDigest?0.05:0.3);
+    xs.push(bp);ys.push(y);
+  }
+  const max=Math.max(...ys);
+  ctx.strokeStyle='#0e7490';ctx.lineWidth=2;ctx.beginPath();
+  xs.forEach((bp,i)=>{const x=bp/800*w, y=h-(ys[i]/max)*(h-30)-15;if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);});
+  ctx.stroke();
+  ctx.fillStyle='#94a3b8';ctx.font='10px sans-serif';
+  [50,200,400,600].forEach(bp=>{const x=bp/800*w;ctx.fillText(bp+'bp',x-12,h-2);});
+  let q='Good ✓', cl='pass';
+  if(overDigest){q='Over-tagmented';cl='fail';}
+  else if(underDigest){q='Under-tagmented';cl='warn';}
+  else if(n<10){q='Too few cells';cl='warn';}
+  document.getElementById('atQ').textContent='Quality: '+q;
+  document.getElementById('atQ').className='sim-stat '+cl;
+}
+['atT','atN'].forEach(id=>document.getElementById(id).oninput=draw);
+window.addEventListener('resize',draw);setTimeout(draw,50);
+</script>
+</body></html>

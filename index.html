@@ -1,0 +1,81 @@
+<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>高通量生物數據分析與整合 — Interactive Tutorial</title>
+<meta name="description" content="20-chapter bilingual interactive tutorial on high-throughput biology data analysis and integration: genomics, epigenomics, transcriptomics, proteomics, metabolomics, multi-omics integration, foundation models.">
+<link rel="stylesheet" href="styles.css"></head><body>
+<nav class="top-nav"><div class="top-nav-inner">
+  <a href="index.html" class="top-nav-brand"><span>🧬</span> <span data-zh="高通量分析與整合" data-en="HTBA Tutorial">高通量分析與整合</span></a>
+  <ul class="top-nav-links">
+    <li><a href="01-overview.html">01 Overview</a></li>
+    <li><a href="04-genomics-variants.html">04 Variants</a></li>
+    <li><a href="08-bulk-rnaseq.html">08 Bulk RNA</a></li>
+    <li><a href="10-spatial-omics.html">10 Spatial</a></li>
+    <li><a href="12-proteomics.html">12 Proteomics</a></li>
+    <li><a href="14-batch-correction.html">14 Batch</a></li>
+    <li><a href="15-multiomics-integration.html">15 Multi-Omics</a></li>
+    <li><a href="19-foundation-models.html">19 LLM</a></li>
+    <li><a href="references/index.html" data-zh="📚 參考資料" data-en="📚 References">📚 參考資料</a></li>
+  </ul>
+</div></nav>
+
+<header class="hub-hero">
+  <div class="hub-tagline">High-Throughput Bio-Data · Analysis & Integration</div>
+  <h1 data-zh="高通量生物數據分析與整合" data-en="High-Throughput Bio-Data Analysis & Integration">高通量生物數據分析與整合</h1>
+  <p data-lang="zh">從基因組、表觀基因組、轉錄組、蛋白質體到代謝體，20 章串起 FASTQ → counts → 多體學整合 → 基礎模型 → 可重現性，附 R/Python 雙程式碼、互動模擬與 200 題自我檢測。</p>
+  <p data-lang="en">From genomics, epigenomics, transcriptomics, to proteomics and metabolomics — 20 chapters connecting FASTQ → counts → multi-omics integration → foundation models → reproducibility. With R/Python dual code lanes, interactive simulations and a 200-question quiz.</p>
+</header>
+
+<h2 class="hub-section-title"><span>Block 1</span><span data-zh="基礎與上游處理" data-en="Foundations & Upstream">基礎與上游處理</span><small>Ch 1–3</small></h2>
+<div class="hub-steps-grid">
+  <a href="01-overview.html" class="hub-card"><div class="hub-emoji">🧭</div><span class="step-num">Ch 1</span><h3 data-zh="高通量數據總覽" data-en="HTBA Overview">高通量數據總覽</h3><p data-lang="zh">五大組學版圖、定序原理、FAIR、公開資料庫 (NCBI/ENA/GTEx/TCGA)。</p><p data-lang="en">The five-omics landscape, sequencing principles, FAIR, NCBI/ENA/GTEx/TCGA.</p></a>
+  <a href="02-experimental-design.html" class="hub-card"><div class="hub-emoji">🧪</div><span class="step-num">Ch 2</span><h3 data-zh="實驗設計與功率分析" data-en="Experimental Design & Power">實驗設計與功率</h3><p data-lang="zh">生物 vs. 技術重複、隨機化與 block、batch confounding、樣本數估算。</p><p data-lang="en">Biological vs. technical replicates, randomization & blocking, batch confounding, sample-size calculation.</p></a>
+  <a href="03-upstream-pipeline.html" class="hub-card"><div class="hub-emoji">⚙️</div><span class="step-num">Ch 3</span><h3 data-zh="FASTQ → counts 上游流程" data-en="FASTQ → Counts Pipeline">上游流程</h3><p data-lang="zh">FastQC/MultiQC、Trimmomatic、STAR/HISAT2/bwa-mem2、Salmon、nf-core。</p><p data-lang="en">FastQC/MultiQC, Trimmomatic, STAR/HISAT2/bwa-mem2, Salmon, nf-core pipelines.</p></a>
+</div>
+
+<h2 class="hub-section-title"><span>Block 2</span><span data-zh="基因組與表觀基因組" data-en="Genomics & Epigenomics">基因組與表觀</span><small>Ch 4–7</small></h2>
+<div class="hub-steps-grid">
+  <a href="04-genomics-variants.html" class="hub-card"><div class="hub-emoji">🧬</div><span class="step-num">Ch 4</span><h3 data-zh="變異偵測與註釋" data-en="Variant Calling & Annotation">變異偵測與註釋</h3><p data-lang="zh">GATK best practices、HaplotypeCaller、DeepVariant、VEP/ANNOVAR、gnomAD/ClinVar。</p><p data-lang="en">GATK best practices, HaplotypeCaller, DeepVariant, VEP/ANNOVAR, gnomAD/ClinVar.</p></a>
+  <a href="05-structural-variants.html" class="hub-card"><div class="hub-emoji">🧩</div><span class="step-num">Ch 5</span><h3 data-zh="結構變異與長讀定序" data-en="SV & Long-read">結構變異與長讀</h3><p data-lang="zh">Manta/Delly/CNVkit、PacBio HiFi、ONT、T2T、pangenome graph。</p><p data-lang="en">Manta/Delly/CNVkit, PacBio HiFi, ONT, T2T, pangenome graphs.</p></a>
+  <a href="06-atac-cutrun.html" class="hub-card"><div class="hub-emoji">🪟</div><span class="step-num">Ch 6</span><h3 data-zh="ATAC-seq 與 CUT&amp;RUN" data-en="ATAC & CUT&RUN">ATAC &amp; CUT&amp;RUN</h3><p data-lang="zh">Tn5、MACS2/3 peak calling、TF motif、scATAC (ArchR / Signac)。</p><p data-lang="en">Tn5 tagmentation, MACS2/3 peak calling, TF motifs, scATAC (ArchR / Signac).</p></a>
+  <a href="07-dna-methylation.html" class="hub-card"><div class="hub-emoji">🔗</div><span class="step-num">Ch 7</span><h3 data-zh="DNA 甲基化" data-en="DNA Methylation">DNA 甲基化</h3><p data-lang="zh">WGBS / RRBS / EM-seq、Bismark、methylKit、DSS、EPIC array、DMR/DMP。</p><p data-lang="en">WGBS / RRBS / EM-seq, Bismark, methylKit, DSS, EPIC array, DMR/DMP.</p></a>
+</div>
+
+<h2 class="hub-section-title"><span>Block 3</span><span data-zh="轉錄組學" data-en="Transcriptomics">轉錄組學</span><small>Ch 8–11</small></h2>
+<div class="hub-steps-grid">
+  <a href="08-bulk-rnaseq.html" class="hub-card"><div class="hub-emoji">📊</div><span class="step-num">Ch 8</span><h3 data-zh="Bulk RNA-seq 表達分析" data-en="Bulk RNA-seq DE">Bulk RNA-seq</h3><p data-lang="zh">DESeq2、edgeR、limma-voom、Salmon→tximport、shrinkage、MA/Volcano。</p><p data-lang="en">DESeq2, edgeR, limma-voom, Salmon→tximport, shrinkage, MA/volcano plots.</p></a>
+  <a href="09-scrnaseq.html" class="hub-card"><div class="hub-emoji">🔬</div><span class="step-num">Ch 9</span><h3 data-zh="scRNA-seq 核心流程" data-en="scRNA-seq Core">scRNA-seq</h3><p data-lang="zh">Cell Ranger、Seurat / Scanpy、HVG、PCA、Leiden、註釋、DE，連結到 scRNA-seq 教程。</p><p data-lang="en">Cell Ranger, Seurat / Scanpy, HVG, PCA, Leiden, annotation, DE — linked to scRNA-seq tutorial.</p></a>
+  <a href="10-spatial-omics.html" class="hub-card"><div class="hub-emoji">🗺️</div><span class="step-num">Ch 10</span><h3 data-zh="空間轉錄組" data-en="Spatial Transcriptomics">空間轉錄組</h3><p data-lang="zh">Visium HD、Xenium、Stereo-seq、Slide-seq；SpaceRanger、Squidpy、Giotto、SpatialExperiment。</p><p data-lang="en">Visium HD, Xenium, Stereo-seq, Slide-seq; SpaceRanger, Squidpy, Giotto, SpatialExperiment.</p></a>
+  <a href="11-long-read-rna.html" class="hub-card"><div class="hub-emoji">📏</div><span class="step-num">Ch 11</span><h3 data-zh="長讀全長轉錄組" data-en="Long-read RNA">長讀全長 RNA</h3><p data-lang="zh">Iso-Seq、ONT direct-RNA、StringTie2 / Bambu / FLAIR、新轉錄本與 m6A。</p><p data-lang="en">Iso-Seq, ONT direct-RNA, StringTie2 / Bambu / FLAIR, novel isoforms, m6A.</p></a>
+</div>
+
+<h2 class="hub-section-title"><span>Block 4</span><span data-zh="蛋白質體與代謝體" data-en="Proteomics & Metabolomics">蛋白質與代謝</span><small>Ch 12–13</small></h2>
+<div class="hub-steps-grid">
+  <a href="12-proteomics.html" class="hub-card"><div class="hub-emoji">🧪</div><span class="step-num">Ch 12</span><h3 data-zh="蛋白質體" data-en="Proteomics">蛋白質體</h3><p data-lang="zh">DDA vs DIA、MaxQuant、FragPipe、DIA-NN、PTM、CITE-seq、Olink、SomaScan。</p><p data-lang="en">DDA vs DIA, MaxQuant, FragPipe, DIA-NN, PTMs, CITE-seq, Olink, SomaScan.</p></a>
+  <a href="13-metabolomics.html" class="hub-card"><div class="hub-emoji">⚗️</div><span class="step-num">Ch 13</span><h3 data-zh="代謝體" data-en="Metabolomics">代謝體</h3><p data-lang="zh">LC-MS untargeted/targeted、XCMS、MS-DIAL、MetaboAnalyst、HMDB、MSI confidence levels。</p><p data-lang="en">LC-MS untargeted/targeted, XCMS, MS-DIAL, MetaboAnalyst, HMDB, MSI confidence levels.</p></a>
+</div>
+
+<h2 class="hub-section-title"><span>Block 5</span><span data-zh="整合與系統生物" data-en="Integration & Systems">整合與系統</span><small>Ch 14–18</small></h2>
+<div class="hub-steps-grid">
+  <a href="14-batch-correction.html" class="hub-card"><div class="hub-emoji">🪢</div><span class="step-num">Ch 14</span><h3 data-zh="批次效應與水平整合" data-en="Batch Correction (Horizontal)">批次效應</h3><p data-lang="zh">ComBat、limma::removeBatchEffect、Harmony、scVI、Scanorama、MNN、benchmark。</p><p data-lang="en">ComBat, limma::removeBatchEffect, Harmony, scVI, Scanorama, MNN, benchmarks.</p></a>
+  <a href="15-multiomics-integration.html" class="hub-card"><div class="hub-emoji">🔗</div><span class="step-num">Ch 15</span><h3 data-zh="多體學垂直整合" data-en="Multi-Omics (Vertical)">多體學垂直整合</h3><p data-lang="zh">MOFA+、Seurat WNN、totalVI、MultiVI、GLUE、DIABLO、JIVE、iCluster、Multigrate。</p><p data-lang="en">MOFA+, Seurat WNN, totalVI, MultiVI, GLUE, DIABLO, JIVE, iCluster, Multigrate.</p></a>
+  <a href="16-spatial-singlecell.html" class="hub-card"><div class="hub-emoji">🧷</div><span class="step-num">Ch 16</span><h3 data-zh="空間 × 單細胞整合" data-en="Spatial × Single-cell">空間 × 單細胞</h3><p data-lang="zh">Tangram、cell2location、SPOTlight、RCTD、Stereoscope、CellTrek、deconvolution benchmark。</p><p data-lang="en">Tangram, cell2location, SPOTlight, RCTD, Stereoscope, CellTrek, deconvolution benchmarks.</p></a>
+  <a href="17-functional-enrichment.html" class="hub-card"><div class="hub-emoji">🧠</div><span class="step-num">Ch 17</span><h3 data-zh="功能富集與通路" data-en="Enrichment & Pathways">功能富集與通路</h3><p data-lang="zh">ORA vs GSEA、fgsea、GSVA、clusterProfiler、ReactomePA、Decoupler、跨組學 crosstalk。</p><p data-lang="en">ORA vs GSEA, fgsea, GSVA, clusterProfiler, ReactomePA, Decoupler, cross-omics crosstalk.</p></a>
+  <a href="18-network-analysis.html" class="hub-card"><div class="hub-emoji">🕸️</div><span class="step-num">Ch 18</span><h3 data-zh="網絡分析與圖學習" data-en="Network Analysis & GNN">網絡與圖學習</h3><p data-lang="zh">WGCNA、STRING、BioGRID、Cytoscape、graph neural networks、MOGONET、SCENIC。</p><p data-lang="en">WGCNA, STRING, BioGRID, Cytoscape, graph neural networks, MOGONET, SCENIC.</p></a>
+</div>
+
+<h2 class="hub-section-title"><span>Block 6</span><span data-zh="基礎模型與可重現性" data-en="Foundation Models & Reproducibility">基礎模型與部署</span><small>Ch 19–20</small></h2>
+<div class="hub-steps-grid">
+  <a href="19-foundation-models.html" class="hub-card"><div class="hub-emoji">🤖</div><span class="step-num">Ch 19</span><h3 data-zh="生物基礎模型" data-en="Bio Foundation Models">基礎模型</h3><p data-lang="zh">scGPT、Geneformer、scFoundation、ESM-3、AlphaFold 3、Tahoe-100M、zero-shot 限制。</p><p data-lang="en">scGPT, Geneformer, scFoundation, ESM-3, AlphaFold 3, Tahoe-100M, zero-shot caveats.</p></a>
+  <a href="20-reproducibility.html" class="hub-card"><div class="hub-emoji">♻️</div><span class="step-num">Ch 20</span><h3 data-zh="可重現性、雲端與倫理" data-en="Reproducibility, Cloud, Ethics">可重現性與倫理</h3><p data-lang="zh">Snakemake/Nextflow、Singularity/Apptainer、dbGaP/EGA、IRB、FAIR、ELSI、EU AI Act。</p><p data-lang="en">Snakemake/Nextflow, Singularity/Apptainer, dbGaP/EGA, IRB, FAIR, ELSI, EU AI Act.</p></a>
+</div>
+
+<h2 class="hub-section-title"><span>📚</span><span data-zh="延伸學習與評量" data-en="Further Learning">延伸學習與評量</span></h2>
+<div class="hub-steps-grid">
+  <a href="references/index.html" class="hub-card"><div class="hub-emoji">📚</div><span class="step-num">References</span><h3 data-zh="參考文獻佐證" data-en="References & Citations">參考文獻佐證</h3><p data-lang="zh">20 章節 × ~130 篇 DOI 引用：學術論文、官方文件、Best Practices、benchmarks、資料庫與疑義注記。</p><p data-lang="en">20 chapters × ~130 DOI citations: academic papers, official docs, best practices, benchmarks, databases, and errata notes.</p></a>
+  <a href="htba-quiz/index.html" class="hub-card" target="_blank" rel="noopener"><div class="hub-emoji">📝</div><span class="step-num">Quiz</span><h3 data-zh="互動式考題" data-en="Interactive Quiz">互動式考題</h3><p data-lang="zh">單選 / 多選 / 是非題；含 profile、隨機練習、錯題複習、模擬考。</p><p data-lang="en">Single / multi / T-F questions, with profiles, random practice, wrong-answer review, and full exam.</p></a>
+  <a href="../../../F_Omics_組學分析/scRNA-seq/scrna-interactive-tutorial/index.html" class="hub-card"><div class="hub-emoji">🔬</div><span class="step-num">Companion</span><h3 data-zh="scRNA-seq 教程" data-en="scRNA-seq Tutorial">scRNA-seq 教程</h3><p data-lang="zh">姊妹教程：12 章單細胞流程深入講解，含 QC、Norm、PCA、Clustering、UMAP、CellChat。</p><p data-lang="en">Companion: 12-chapter deep dive into single-cell — QC, norm, PCA, clustering, UMAP, CellChat.</p></a>
+  <a href="../../../B_CS_Foundations_資訊基礎/Data_Science_Foundations/ds-foundations-interactive-tutorial/index.html" class="hub-card"><div class="hub-emoji">📊</div><span class="step-num">Foundation</span><h3 data-zh="資料科學基礎" data-en="Data Science Foundations">資料科學基礎</h3><p data-lang="zh">前置課程：20 章資料科學基礎，含統計、ML、Snakemake、Docker、倫理。</p><p data-lang="en">Prerequisite: 20-chapter data science foundations — stats, ML, Snakemake, Docker, ethics.</p></a>
+</div>
+<div style="height:60px"></div>
+<footer class="site-footer">© Charlene — High-Throughput Bio-Data Analysis & Integration · Interactive Tutorial · 20 chapters · bilingual</footer>
+<script src="i18n.js"></script>
+</body></html>

@@ -1,0 +1,176 @@
+<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Ch 12: 蛋白質體 — HTBA</title>
+<link rel="stylesheet" href="styles.css">
+</head><body>
+<nav class="top-nav"><div class="top-nav-inner">
+  <a href="index.html" class="top-nav-brand"><span>🧬</span> <span data-zh="高通量分析與整合" data-en="HTBA Tutorial">高通量分析與整合</span></a>
+  <ul class="top-nav-links"><li><a href="01-overview.html">01</a></li><li><a href="02-experimental-design.html">02</a></li><li><a href="03-upstream-pipeline.html">03</a></li><li><a href="04-genomics-variants.html">04</a></li><li><a href="05-structural-variants.html">05</a></li><li><a href="06-atac-cutrun.html">06</a></li><li><a href="07-dna-methylation.html">07</a></li><li><a href="08-bulk-rnaseq.html">08</a></li><li><a href="09-scrnaseq.html">09</a></li><li><a href="10-spatial-omics.html">10</a></li><li><a href="11-long-read-rna.html">11</a></li><li><a href="12-proteomics.html" class="active">12</a></li><li><a href="13-metabolomics.html">13</a></li><li><a href="14-batch-correction.html">14</a></li><li><a href="15-multiomics-integration.html">15</a></li><li><a href="16-spatial-singlecell.html">16</a></li><li><a href="17-functional-enrichment.html">17</a></li><li><a href="18-network-analysis.html">18</a></li><li><a href="19-foundation-models.html">19</a></li><li><a href="20-reproducibility.html">20</a></li>
+    <li><a href="references/index.html" data-zh="📚 參考資料" data-en="📚 References">📚 參考資料</a></li>
+  </ul>
+</div></nav>
+<div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
+
+<header class="page-hero"><div class="step-badge">CH 12 / 20 · BLOCK 4 PROTEOMICS</div>
+<h1 data-zh="蛋白質體 (Proteomics)" data-en="Proteomics">蛋白質體</h1>
+<p class="subtitle" data-lang="zh">DDA vs. DIA、MaxQuant / FragPipe / DIA-NN、PTM、CITE-seq、Olink、SomaScan — 從 MS 到單細胞蛋白。</p>
+<p class="subtitle" data-lang="en">DDA vs. DIA, MaxQuant / FragPipe / DIA-NN, PTMs, CITE-seq, Olink, SomaScan — from MS to single-cell proteins.</p>
+</header>
+
+<main class="content-wrap">
+
+<section class="section">
+<div class="section-label" data-zh="兩大模式" data-en="DDA vs DIA">兩大模式</h2>
+<h2 data-zh="一、DDA vs. DIA：兩大採樣模式" data-en="I. DDA vs. DIA: The Two Acquisition Modes">一、DDA vs. DIA</h2>
+<div class="card-grid cols-2">
+<div class="card"><h4>🎯 DDA (Data-Dependent Acquisition)</h4>
+<div data-lang="zh"><p>每個 MS1 scan 後挑前 N 個高豐度 precursor 做 MS2 fragmentation。經典模式，低豐度蛋白容易漏。<strong>工具：</strong>MaxQuant、Proteome Discoverer、FragPipe（含 MSFragger，速度最快）。</p></div>
+<div data-lang="en"><p>For each MS1 scan, pick top-N abundant precursors for MS2 fragmentation. Classic mode but low-abundance proteins are often missed. <strong>Tools:</strong> MaxQuant, Proteome Discoverer, FragPipe (MSFragger inside — fastest).</p></div>
+</div>
+<div class="card"><h4>🌊 DIA (Data-Independent Acquisition)</h4>
+<div data-lang="zh"><p>把 m/z 範圍切成固定 windows，每 window 內所有 ion 都做 fragmentation。<strong>無偏取樣</strong>、reproducible、適合大 cohort。<strong>工具：</strong>DIA-NN（library-free 主流）、Spectronaut、EncyclopeDIA。深度學習預測 spectral library（Prosit、DeepRT）大幅提升 ID 數。</p></div>
+<div data-lang="en"><p>Divide m/z range into fixed windows; fragment all ions in each window. <strong>Unbiased sampling</strong>, reproducible, ideal for large cohorts. <strong>Tools:</strong> DIA-NN (the library-free workhorse), Spectronaut, EncyclopeDIA. DL-predicted spectral libraries (Prosit, DeepRT) boost IDs substantially.</p></div>
+</div>
+</div>
+<div class="callout tip"><span class="callout-icon">💡</span><div>
+<span data-lang="zh"><strong>2024-2025 趨勢：</strong>DIA 已是 cohort proteomics 主流；DIA-NN 1.9 + AlphaPept / AlphaPeptDeep 把 library-free 流程推到 &gt;10k protein IDs / plasma sample / 半小時 gradient。</span>
+<span data-lang="en"><strong>2024-2025 trend:</strong> DIA dominates cohort proteomics; DIA-NN 1.9 + AlphaPept / AlphaPeptDeep push library-free workflows to &gt;10k protein IDs per plasma sample in 30 min gradients.</span>
+</div></div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="流程" data-en="WORKFLOW">流程</h2>
+<h2 data-zh="二、Proteomics 分析流程" data-en="II. Proteomics Workflow">二、分析流程</h2>
+<div class="workflow">
+<div class="workflow-step" data-step="1"><h4>Raw → mzML</h4><p data-lang="zh">原廠 .raw / .wiff → 用 <strong>ProteoWizard msconvert</strong> 或 <strong>ThermoRawFileParser</strong> 轉開放標準 .mzML。</p><p data-lang="en">Vendor .raw / .wiff → use <strong>ProteoWizard msconvert</strong> or <strong>ThermoRawFileParser</strong> for open .mzML.</p></div>
+<div class="workflow-step" data-step="2"><h4 data-zh="搜尋 / 量化" data-en="Search / quantify">搜尋 / 量化</h4><p data-lang="zh">DDA：MaxQuant LFQ / FragPipe LFQ / TMT-MS3；DIA：DIA-NN library-free 或 spectral lib + Prosit。</p><p data-lang="en">DDA: MaxQuant LFQ / FragPipe LFQ / TMT-MS3; DIA: DIA-NN library-free or spectral lib + Prosit.</p></div>
+<div class="workflow-step" data-step="3"><h4>FDR 控制</h4><p data-lang="zh">PSM-level、peptide-level、protein-level 三層 FDR；常用 1% PSM FDR + 1% protein FDR。Picked group FDR / Pyteomics 模組更嚴格。</p><p data-lang="en">PSM-, peptide-, protein-level FDR; common 1% PSM + 1% protein FDR. Picked group FDR / Pyteomics modules are stricter.</p></div>
+<div class="workflow-step" data-step="4"><h4 data-zh="統計分析" data-en="Statistical analysis">統計</h4><p data-lang="zh"><strong>MSstats</strong>、<strong>limma</strong>、<strong>ProlfqUMI / MSqRob2</strong>。missing value 處理：MNAR + MAR 混合，常用 <strong>perseus</strong> 的 imputation 或 MissForest。</p><p data-lang="en"><strong>MSstats</strong>, <strong>limma</strong>, <strong>ProlfqUMI / MSqRob2</strong>. Missing values: mixed MNAR + MAR — use perseus imputation or MissForest.</p></div>
+<div class="workflow-step" data-step="5"><h4>PTM</h4><p data-lang="zh">磷酸化、乙醯化、glycosylation：<strong>open search</strong>（MSFragger / Crux）、<strong>Skyline</strong>。site-level localization 用 <strong>PTM-Shepherd</strong>、<strong>AScore</strong>。</p><p data-lang="en">Phosphorylation, acetylation, glycosylation: <strong>open search</strong> (MSFragger / Crux), <strong>Skyline</strong>. Site localization: <strong>PTM-Shepherd</strong>, <strong>AScore</strong>.</p></div>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="替代平台" data-en="OTHER PROTEOMICS">替代平台</h2>
+<h2 data-zh="三、affinity-based 高通量蛋白量測" data-en="III. Affinity-based High-throughput Protein Profiling">三、affinity-based 平台</h2>
+<div class="card-grid cols-3">
+<div class="card"><h4>🦠 CITE-seq</h4><p data-lang="zh">scRNA + ~100 抗體 oligo barcode。Stoeckius 2017。同細胞測 mRNA + 蛋白表面 marker。已是免疫 atlas 標配。</p><p data-lang="en">scRNA + ~100 oligo-barcoded antibodies (Stoeckius 2017). mRNA + surface protein per cell. Standard for immune atlases.</p></div>
+<div class="card"><h4>🎯 <span data-zh="Olink Explore 3072" data-en="Olink Explore 3072">Olink</span></h4><p data-lang="zh">PEA（proximity extension assay）：每 protein 2 個抗體靠近時產生擴增信號。3072-plex、~1 µL 血漿、用於 UK Biobank PPP。</p><p data-lang="en">Proximity extension assay: two antibodies per protein generate signal when close. 3072-plex, ~1 µL plasma; used by UK Biobank PPP.</p></div>
+<div class="card"><h4>🧬 <span data-zh="SomaScan v5" data-en="SomaScan v5">SomaScan</span></h4><p data-lang="zh">SOMAmer（modified aptamer）測 ~11k proteins，血漿 / 血清。常用於 plasma proteome、aging clock。</p><p data-lang="en">SOMAmers (modified aptamers) measure ~11k proteins in plasma/serum. Common for plasma proteome, aging clocks.</p></div>
+<div class="card"><h4 data-zh="單細胞 MS proteomics" data-en="Single-cell MS proteomics">scProteomics MS</h4><p data-lang="zh"><strong>SCoPE2 / SCoPE-MS2</strong>、<strong>nPOP</strong>、<strong>plexDIA</strong>：單一 HeLa 細胞已可量化 ~3000 蛋白；Thermo Stellar MS 2024 為硬體里程碑。</p><p data-lang="en"><strong>SCoPE2 / SCoPE-MS2</strong>, <strong>nPOP</strong>, <strong>plexDIA</strong>: ~3000 proteins per HeLa cell; Thermo Stellar MS (2024) is a hardware milestone.</p></div>
+<div class="card"><h4>📦 PRIDE / MassIVE</h4><p data-lang="zh">PRIDE（EBI）是 MS proteomics 主流公開資料庫；MassIVE 為 UCSD/UCSD CCMS。提交需 .raw + 結果 + protocol。</p><p data-lang="en">PRIDE (EBI) is the main public MS proteomics repository; MassIVE is UCSD/CCMS. Submission requires .raw + results + protocol.</p></div>
+<div class="card"><h4>🏆 PCAWG → CPTAC</h4><p data-lang="zh">CPTAC（NCI）整合癌症 proteogenomics（DNA + RNA + protein + phospho + PTM）。是 multi-omics 整合最完整的公開資料。</p><p data-lang="en">CPTAC (NCI) integrates cancer proteogenomics (DNA + RNA + protein + phospho + PTM). The most complete public multi-omics dataset.</p></div>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="互動" data-en="INTERACTIVE">互動</h2>
+<h2 data-zh="四、FDR 與 protein ID 的權衡" data-en="IV. FDR vs. Protein ID Trade-off">四、FDR 模擬</h2>
+<div class="interactive-panel">
+<div class="sim-stats"><span class="sim-stat pass" id="pID">IDs: —</span><span class="sim-stat warn" id="pFP">FP: —</span></div>
+<div class="slider-group"><label><span>PSM FDR</span><span id="pFv">0.01</span></label><input type="range" id="pF" min="0.001" max="0.10" value="0.01" step="0.001"></div>
+<div class="slider-group"><label><span data-zh="採樣模式" data-en="Mode">模式</span><span id="pMv">DIA</span></label><input type="range" id="pM" min="0" max="1" value="1" step="1"></div>
+<canvas id="pCv" style="background:var(--c-surface-alt);border-radius:8px;width:100%;height:200px"></canvas>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="程式碼" data-en="CODE">程式碼</div>
+<h2 data-zh="五、DIA-NN + MSstats / Python pyteomics" data-en="V. DIA-NN + MSstats / Python pyteomics">五、實作</h2>
+<div class="code-tabs"><div class="code-tab-btns"><button class="code-tab-btn active" onclick="switchTab(this,'sh1')">Shell / DIA-NN</button><button class="code-tab-btn" onclick="switchTab(this,'r1')">R / MSstats</button><button class="code-tab-btn" onclick="switchTab(this,'py1')">Python / pyteomics</button></div>
+<div class="code-tab-content active" id="sh1"><pre><span class="comment"># DIA-NN library-free 模式（含 in silico spectral lib）</span>
+<span class="func">diann</span> --f sample1.mzML --f sample2.mzML --f sample3.mzML \
+      --fasta human_uniprot.fa \
+      --predictor --threads <span class="num">16</span> --qvalue <span class="num">0.01</span> \
+      --matrices --report-lib-info \
+      --out report.tsv --out-lib in_silico_lib.tsv
+
+<span class="comment"># 結果讀入 R 做後續統計</span></pre></div>
+<div class="code-tab-content" id="r1"><pre><span class="comment"># MSstats — 蛋白層級統計</span>
+<span class="func">library</span>(MSstats)
+raw &lt;- <span class="func">DIANNtoMSstatsFormat</span>(<span class="func">read.delim</span>(<span class="str">"report.tsv"</span>),
+                              annotation = sample_annot)
+proc &lt;- <span class="func">dataProcess</span>(raw, normalization = <span class="str">"equalizeMedians"</span>,
+                      summaryMethod = <span class="str">"TMP"</span>, censoredInt = <span class="str">"NA"</span>)
+
+cm  &lt;- <span class="func">matrix</span>(<span class="func">c</span>(-<span class="num">1</span>, <span class="num">1</span>), nrow=<span class="num">1</span>, dimnames=<span class="func">list</span>(<span class="str">"TvsC"</span>, <span class="func">c</span>(<span class="str">"Ctrl"</span>,<span class="str">"Treated"</span>)))
+res &lt;- <span class="func">groupComparison</span>(contrast.matrix = cm, data = proc)$ComparisonResult
+
+<span class="comment"># Volcano</span>
+<span class="func">library</span>(ggplot2)
+<span class="func">ggplot</span>(res, <span class="func">aes</span>(log2FC, -<span class="func">log10</span>(adj.pvalue))) + <span class="func">geom_point</span>()</pre></div>
+<div class="code-tab-content" id="py1"><pre><span class="comment"># pyteomics — 開放原始碼 Python proteomics 工具</span>
+<span class="kw">from</span> pyteomics <span class="kw">import</span> mzml, mass, parser
+<span class="kw">import</span> pandas <span class="kw">as</span> pd
+
+<span class="comment"># 讀 mzML 並計算 peptide mass / fragment ions</span>
+<span class="kw">for</span> spectrum <span class="kw">in</span> mzml.<span class="func">read</span>(<span class="str">"sample.mzML"</span>):
+    <span class="kw">if</span> spectrum[<span class="str">"ms level"</span>] == <span class="num">2</span>:
+        pmz = spectrum[<span class="str">"precursorList"</span>][<span class="str">"precursor"</span>][<span class="num">0</span>][<span class="str">"selectedIonList"</span>] \
+              [<span class="str">"selectedIon"</span>][<span class="num">0</span>][<span class="str">"selected ion m/z"</span>]
+
+<span class="comment"># AlphaPept / alphapeptdeep — DL-based search</span>
+<span class="kw">import</span> alphapept.runner <span class="kw">as</span> ap
+ap.<span class="func">run_complete_workflow</span>(<span class="str">"settings.yaml"</span>)</pre></div>
+</div>
+</section>
+
+<section class="quiz-section">
+<h3>📝 <span data-zh="自我檢測" data-en="Self-Check">自我檢測</span></h3>
+<div class="quiz-q" data-answer="1" data-exp-zh="DIA 對所有 ion fragmentation 採無偏取樣，可重複性與低豐度偵測都優於 DDA。" data-exp-en="DIA fragments all ions in fixed windows — better reproducibility and low-abundance detection than DDA.">
+<p data-lang="zh">1. 想做 1000 樣本 plasma cohort proteomics，最推薦的採樣模式？</p>
+<p data-lang="en">1. Recommended acquisition mode for a 1000-sample plasma cohort proteomics?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">DDA</div><div class="quiz-opt" data-idx="1">DIA</div><div class="quiz-opt" data-idx="2">SRM/MRM</div><div class="quiz-opt" data-idx="3">MALDI</div>
+</div><div class="quiz-feedback"></div></div>
+<div class="quiz-q" data-answer="2" data-exp-zh="CITE-seq 用 oligo-barcoded 抗體在 scRNA-seq 同管中同步測 ~100 個表面蛋白。" data-exp-en="CITE-seq uses oligo-barcoded antibodies to measure ~100 surface proteins in the same scRNA-seq run.">
+<p data-lang="zh">2. 在同一細胞同時測 mRNA 與表面蛋白的技術？</p>
+<p data-lang="en">2. Same-cell mRNA + surface protein measurement?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">Visium</div><div class="quiz-opt" data-idx="1">DDA-MS</div><div class="quiz-opt" data-idx="2">CITE-seq</div><div class="quiz-opt" data-idx="3">EPIC array</div>
+</div><div class="quiz-feedback"></div></div>
+<div class="quiz-q" data-answer="0" data-exp-zh="PRIDE (EBI) 是 MS proteomics 最主要的公開資料庫。" data-exp-en="PRIDE (EBI) is the main public MS proteomics repository.">
+<p data-lang="zh">3. MS proteomics 資料公開首選資料庫？</p>
+<p data-lang="en">3. Top public repository for MS proteomics?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">PRIDE</div><div class="quiz-opt" data-idx="1">gnomAD</div><div class="quiz-opt" data-idx="2">GEO</div><div class="quiz-opt" data-idx="3">dbVar</div>
+</div><div class="quiz-feedback"></div></div>
+</section>
+
+<nav class="page-nav">
+<a href="11-long-read-rna.html"><span class="nav-dir" data-zh="← 上一章" data-en="← Prev">← 上一章</span><span class="nav-title" data-zh="Ch 11 · 長讀全長轉錄組" data-en="Ch 11 · Long-read Full-length Transcriptomics">Ch 11 · 長讀全長轉錄組</span></a>
+<a href="13-metabolomics.html"><span class="nav-dir" data-zh="下一章 →" data-en="Next →">下一章 →</span><span class="nav-title" data-zh="Ch 13 · 代謝體 (Metabolomics)" data-en="Ch 13 · Metabolomics">Ch 13 · 代謝體 (Metabolomics)</span></a>
+</nav>
+</main>
+
+<footer class="site-footer">© Charlene — HTBA Interactive Tutorial</footer>
+<script src="i18n.js"></script>
+<script>
+window.addEventListener('scroll',()=>{const h=document.documentElement;document.getElementById('progressBar').style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100+'%';});
+function switchTab(b,id){const p=b.closest('.code-tabs');p.querySelectorAll('.code-tab-btn').forEach(x=>x.classList.remove('active'));p.querySelectorAll('.code-tab-content').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById(id).classList.add('active');}
+document.querySelectorAll('.quiz-q').forEach(q=>{const ans=+q.dataset.answer;q.querySelectorAll('.quiz-opt').forEach(o=>{o.onclick=()=>{if(q.dataset.done)return;q.dataset.done=1;const i=+o.dataset.idx,fb=q.querySelector('.quiz-feedback');q.querySelectorAll('.quiz-opt').forEach(x=>{if(+x.dataset.idx===ans)x.classList.add('correct');else if(+x.dataset.idx===i)x.classList.add('wrong');});if(i===ans){fb.className='quiz-feedback show correct-fb';fb.textContent='✓ '+(window.I18n&&window.I18n.get()==='en'?q.dataset.expEn:q.dataset.expZh);}else{fb.className='quiz-feedback show wrong-fb';fb.textContent='✗ '+(window.I18n&&window.I18n.get()==='en'?q.dataset.expEn:q.dataset.expZh);}};});});
+// FDR sim
+const cv=document.getElementById('pCv'),ctx=cv.getContext('2d');
+function draw(){
+  const f=+document.getElementById('pF').value,m=+document.getElementById('pM').value;
+  document.getElementById('pFv').textContent=f.toFixed(3);document.getElementById('pMv').textContent=m?'DIA':'DDA';
+  const w=cv.width=cv.offsetWidth,h=cv.height=cv.offsetHeight;
+  ctx.fillStyle='#eef5f7';ctx.fillRect(0,0,w,h);
+  // ID count vs FDR (rough simulation)
+  const base=m?8000:5000;
+  const ids=Math.round(base+(f-0.001)*1500*60);
+  const fp=Math.round(ids*f);
+  document.getElementById('pID').textContent='IDs: '+ids.toLocaleString();
+  document.getElementById('pFP').textContent='FP: '+fp.toLocaleString();
+  // bar
+  const max=12000;
+  const barW=ids/max*(w-40);
+  ctx.fillStyle='#cffafe';ctx.fillRect(20,h/2-25,w-40,50);
+  ctx.fillStyle='#0e7490';ctx.fillRect(20,h/2-25,barW,50);
+  ctx.fillStyle='#f97316';const fpW=fp/max*(w-40);ctx.fillRect(20+barW-fpW,h/2-25,fpW,50);
+  ctx.fillStyle='#fff';ctx.font='14px sans-serif';ctx.fillText(ids+' IDs',32,h/2+5);
+  ctx.fillStyle='#0f172a';ctx.font='10px sans-serif';ctx.fillText('protein IDs',w/2-30,h-6);
+}
+['pF','pM'].forEach(id=>document.getElementById(id).oninput=draw);
+window.addEventListener('resize',draw);setTimeout(draw,50);
+</script>
+</body></html>

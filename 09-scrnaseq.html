@@ -1,0 +1,171 @@
+<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Ch 9: scRNA-seq 核心流程 — HTBA</title>
+<link rel="stylesheet" href="styles.css">
+</head><body>
+<nav class="top-nav"><div class="top-nav-inner">
+  <a href="index.html" class="top-nav-brand"><span>🧬</span> <span data-zh="高通量分析與整合" data-en="HTBA Tutorial">高通量分析與整合</span></a>
+  <ul class="top-nav-links">
+    <li><a href="01-overview.html">01</a></li><li><a href="02-experimental-design.html">02</a></li><li><a href="03-upstream-pipeline.html">03</a></li><li><a href="04-genomics-variants.html">04</a></li><li><a href="05-structural-variants.html">05</a></li><li><a href="06-atac-cutrun.html">06</a></li><li><a href="07-dna-methylation.html">07</a></li><li><a href="08-bulk-rnaseq.html">08</a></li><li><a href="09-scrnaseq.html" class="active">09</a></li><li><a href="10-spatial-omics.html">10</a></li><li><a href="11-long-read-rna.html">11</a></li><li><a href="12-proteomics.html">12</a></li><li><a href="13-metabolomics.html">13</a></li><li><a href="14-batch-correction.html">14</a></li><li><a href="15-multiomics-integration.html">15</a></li><li><a href="16-spatial-singlecell.html">16</a></li><li><a href="17-functional-enrichment.html">17</a></li><li><a href="18-network-analysis.html">18</a></li><li><a href="19-foundation-models.html">19</a></li><li><a href="20-reproducibility.html">20</a></li>
+    <li><a href="references/index.html" data-zh="📚 參考資料" data-en="📚 References">📚 參考資料</a></li>
+  </ul>
+</div></nav>
+<div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
+
+<header class="page-hero"><div class="step-badge">CH 9 / 20 · BLOCK 3 TRANSCRIPTOMICS</div>
+<h1 data-zh="scRNA-seq 核心流程速覽" data-en="scRNA-seq Core Workflow Recap">scRNA-seq 核心流程</h1>
+<p class="subtitle" data-lang="zh">本章是高速複習；完整 12 章深入教程請見姊妹教程「scRNA-seq Interactive Tutorial」。</p>
+<p class="subtitle" data-lang="en">This chapter is a rapid recap. The full 12-chapter deep dive lives in the companion "scRNA-seq Interactive Tutorial".</p>
+</header>
+
+<main class="content-wrap">
+
+<section class="section">
+<div class="callout info"><span class="callout-icon">🔗</span><div>
+<span data-lang="zh">完整教學請見：<a href="../../../F_Omics_組學分析/scRNA-seq/scrna-interactive-tutorial/index.html"><strong>scRNA-seq Interactive Tutorial</strong></a>（12 章：QC、Norm、HVG、Scaling、PCA、Clustering、UMAP、Annotation、DE、Integration、CellChat、Trajectory）。本章只覆蓋 high-level 流程與要點。</span>
+<span data-lang="en">Full course: <a href="../../../F_Omics_組學分析/scRNA-seq/scrna-interactive-tutorial/index.html"><strong>scRNA-seq Interactive Tutorial</strong></a> (12 chapters: QC, Norm, HVG, Scaling, PCA, Clustering, UMAP, Annotation, DE, Integration, CellChat, Trajectory). This chapter only covers the high-level pipeline.</span>
+</div></div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="流程" data-en="WORKFLOW">流程</h2>
+<h2 data-zh="一、scRNA-seq 12 步驟一頁速覽" data-en="I. 12-Step scRNA-seq Pipeline in One Page">一、12 步驟速覽</h2>
+<div class="workflow">
+<div class="workflow-step" data-step="1"><h4>QC</h4><p data-lang="zh">nFeature、nCount、MT%、雙細胞偵測 (DoubletFinder / Scrublet)、ambient RNA (SoupX / CellBender)。</p><p data-lang="en">nFeature, nCount, MT%, doublet detection (DoubletFinder / Scrublet), ambient RNA (SoupX / CellBender).</p></div>
+<div class="workflow-step" data-step="2"><h4>Normalization</h4><p data-lang="zh">LogNormalize、SCTransform、scran pooling。SCTransform v2 (2022) 用 GLM-PCA 取代 NB regression，更穩定。</p><p data-lang="en">LogNormalize, SCTransform, scran pooling. SCTransform v2 (2022) uses GLM-PCA, more stable.</p></div>
+<div class="workflow-step" data-step="3"><h4>HVG → PCA → Neighbors → Clustering</h4><p data-lang="zh">高變異基因 → PCA 降維（多選 30-50 PC）→ KNN graph → Leiden（取代 Louvain，更穩定且支援 multi-resolution）。</p><p data-lang="en">HVGs → PCA (30–50 PCs) → KNN graph → Leiden (replaces Louvain — more stable, supports multi-resolution).</p></div>
+<div class="workflow-step" data-step="4"><h4>UMAP / Annotation</h4><p data-lang="zh">UMAP 2D 視覺化。註釋：marker-based (PanglaoDB、CellMarker)、reference-based (SingleR、Azimuth、Symphony)、LLM-assisted (GPTCelltype 2024)。</p><p data-lang="en">UMAP 2D viz. Annotation: marker-based (PanglaoDB, CellMarker), reference-based (SingleR, Azimuth, Symphony), LLM-assisted (GPTCelltype 2024).</p></div>
+<div class="workflow-step" data-step="5"><h4>DE / Integration / Cell-cell comm. / Trajectory</h4><p data-lang="zh">DE: Wilcoxon、MAST、edgeR/DESeq2 pseudo-bulk（推薦）。整合: Harmony、scVI、Seurat CCA、Scanorama（詳見 Ch 14）。Cell-cell: CellChat、CellPhoneDB、LIANA。軌跡: Monocle3、PAGA、scVelo。</p><p data-lang="en">DE: Wilcoxon, MAST, edgeR/DESeq2 pseudo-bulk (recommended). Integration: Harmony, scVI, Seurat CCA, Scanorama (Ch 14). Cell-cell: CellChat, CellPhoneDB, LIANA. Trajectory: Monocle3, PAGA, scVelo.</p></div>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="平台對比" data-en="PLATFORMS">平台</h2>
+<h2 data-zh="二、scRNA-seq 平台選型" data-en="II. scRNA-seq Platform Choice">二、平台選型</h2>
+<table class="comp-table">
+<thead><tr><th>Platform</th><th data-zh="細胞通量" data-en="Cell throughput">通量</th><th data-zh="敏感度" data-en="Sensitivity">敏感度</th><th data-zh="特性" data-en="Notes">特性</th></tr></thead>
+<tbody>
+<tr><td><strong>10x Chromium 3' / 5'</strong></td><td>500-20k / sample</td><td>★★★</td><td data-zh="主流、廣泛 ecosystem" data-en="Mainstream, broad ecosystem">主流</td></tr>
+<tr><td><strong>10x Chromium HT / GEM-X (2024)</strong></td><td>up to 100k</td><td>★★★</td><td data-zh="高通量、低成本/細胞" data-en="High throughput, low $/cell">高通量</td></tr>
+<tr><td><strong>SMART-seq3xpress (2022)</strong></td><td>plate-based</td><td>★★★★★</td><td data-zh="full-length、最深 reads/cell" data-en="Full-length, deepest reads/cell">深度</td></tr>
+<tr><td><strong>BD Rhapsody</strong></td><td>10k-100k</td><td>★★★</td><td data-zh="磁珠 + targeted panel" data-en="Beads + targeted panels">targeted</td></tr>
+<tr><td><strong>Parse Bio / sci-RNA-seq3</strong></td><td>100k-1M</td><td>★★</td><td data-zh="combinatorial barcoding、超高通量" data-en="Combinatorial barcoding, ultra-high throughput">百萬細胞</td></tr>
+<tr><td><strong>BGI DNBelab</strong></td><td>10k-100k</td><td>★★★</td><td data-zh="MGI 平台、CN 常用" data-en="MGI platform, common in CN">MGI</td></tr>
+</tbody></table>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="互動：cluster 解析度" data-en="INTERACTIVE">互動</h2>
+<h2 data-zh="三、Leiden 解析度模擬" data-en="III. Leiden Resolution Sim">三、解析度與 cluster 數</h2>
+<div data-lang="zh"><p>Leiden / Louvain 的 resolution 越大，cluster 越多越細。沒有「正確答案」— 視生物問題與 marker 表現決定。實務上用 clustree 視覺化 resolution 之間的轉換。</p></div>
+<div data-lang="en"><p>Higher Leiden / Louvain resolution → more, finer clusters. No "right answer" — driven by biological question and marker expression. In practice use clustree to visualize transitions.</p></div>
+<div class="interactive-panel">
+<div class="sim-stats"><span class="sim-stat pass" id="lkN">K clusters: —</span><span class="sim-stat warn" id="lkW">Status: —</span></div>
+<div class="slider-group"><label><span>Resolution</span><span id="lkV">0.5</span></label><input type="range" id="lkR" min="0.05" max="2.5" value="0.5" step="0.05"></div>
+<canvas id="lkCv" style="background:var(--c-surface-alt);border-radius:8px;width:100%;height:260px"></canvas>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="程式碼" data-en="CODE">程式碼</div>
+<h2 data-zh="四、Seurat / Scanpy 一條龍" data-en="IV. Seurat / Scanpy End-to-end">四、實作</h2>
+<div class="code-tabs"><div class="code-tab-btns"><button class="code-tab-btn active" onclick="switchTab(this,'r1')">R / Seurat v5</button><button class="code-tab-btn" onclick="switchTab(this,'py1')">Python / Scanpy</button></div>
+<div class="code-tab-content active" id="r1"><pre><span class="comment"># Seurat v5 全流程</span>
+<span class="func">library</span>(Seurat); <span class="func">library</span>(SeuratObject)
+obj &lt;- <span class="func">Read10X</span>(<span class="str">"filtered_feature_bc_matrix/"</span>) |&gt;
+       <span class="func">CreateSeuratObject</span>(min.cells=<span class="num">3</span>, min.features=<span class="num">200</span>)
+obj[[<span class="str">"percent.mt"</span>]] &lt;- <span class="func">PercentageFeatureSet</span>(obj, pattern=<span class="str">"^MT-"</span>)
+obj &lt;- <span class="func">subset</span>(obj, nFeature_RNA &gt; <span class="num">200</span> &amp; nFeature_RNA &lt; <span class="num">6000</span> &amp; percent.mt &lt; <span class="num">15</span>)
+
+obj &lt;- <span class="func">SCTransform</span>(obj) |&gt;
+       <span class="func">RunPCA</span>(npcs=<span class="num">50</span>) |&gt;
+       <span class="func">FindNeighbors</span>(dims=<span class="num">1</span>:<span class="num">30</span>) |&gt;
+       <span class="func">FindClusters</span>(resolution=<span class="num">0.5</span>, algorithm=<span class="num">4</span>) |&gt;   <span class="comment"># 4 = Leiden</span>
+       <span class="func">RunUMAP</span>(dims=<span class="num">1</span>:<span class="num">30</span>)
+
+<span class="comment"># Marker + Annotation（Azimuth reference-based）</span>
+markers &lt;- <span class="func">FindAllMarkers</span>(obj, only.pos=<span class="kw">TRUE</span>, min.pct=<span class="num">0.25</span>)
+<span class="func">library</span>(Azimuth)
+obj &lt;- <span class="func">RunAzimuth</span>(obj, reference=<span class="str">"pbmcref"</span>)
+<span class="func">DimPlot</span>(obj, group.by=<span class="str">"predicted.celltype.l2"</span>, label=<span class="kw">TRUE</span>)</pre></div>
+<div class="code-tab-content" id="py1"><pre><span class="comment"># Scanpy 全流程</span>
+<span class="kw">import</span> scanpy <span class="kw">as</span> sc
+adata = sc.<span class="func">read_10x_mtx</span>(<span class="str">"filtered_feature_bc_matrix/"</span>)
+sc.pp.<span class="func">filter_cells</span>(adata, min_genes=<span class="num">200</span>)
+sc.pp.<span class="func">filter_genes</span>(adata, min_cells=<span class="num">3</span>)
+adata.var[<span class="str">"mt"</span>] = adata.var_names.str.<span class="func">startswith</span>(<span class="str">"MT-"</span>)
+sc.pp.<span class="func">calculate_qc_metrics</span>(adata, qc_vars=[<span class="str">"mt"</span>], inplace=<span class="kw">True</span>)
+adata = adata[(adata.obs.n_genes_by_counts &lt; <span class="num">6000</span>) &amp;
+              (adata.obs.pct_counts_mt &lt; <span class="num">15</span>)]
+
+sc.pp.<span class="func">normalize_total</span>(adata, target_sum=<span class="num">1e4</span>)
+sc.pp.<span class="func">log1p</span>(adata)
+sc.pp.<span class="func">highly_variable_genes</span>(adata, n_top_genes=<span class="num">3000</span>, flavor=<span class="str">"seurat_v3"</span>)
+sc.pp.<span class="func">scale</span>(adata); sc.tl.<span class="func">pca</span>(adata, n_comps=<span class="num">50</span>)
+sc.pp.<span class="func">neighbors</span>(adata, n_pcs=<span class="num">30</span>)
+sc.tl.<span class="func">leiden</span>(adata, resolution=<span class="num">0.5</span>)
+sc.tl.<span class="func">umap</span>(adata)
+sc.pl.<span class="func">umap</span>(adata, color=[<span class="str">"leiden"</span>])
+
+<span class="comment"># Annotation：CellTypist（人類 ~25 個 reference）</span>
+<span class="kw">import</span> celltypist
+preds = celltypist.<span class="func">annotate</span>(adata, model=<span class="str">"Immune_All_Low.pkl"</span>,
+                            majority_voting=<span class="kw">True</span>)</pre></div>
+</div>
+</section>
+
+<section class="quiz-section">
+<h3>📝 <span data-zh="自我檢測" data-en="Self-Check">自我檢測</span></h3>
+<div class="quiz-q" data-answer="1" data-exp-zh="Leiden 是 Louvain 的改進版本，避免不連通 cluster、支援 multi-resolution；現代工具都已預設 Leiden。" data-exp-en="Leiden improves on Louvain — no disconnected clusters, multi-resolution support — and is the modern default.">
+<p data-lang="zh">1. scRNA-seq 現代分群常用的圖演算法？</p>
+<p data-lang="en">1. Modern graph algorithm of choice for scRNA clustering?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">k-means</div><div class="quiz-opt" data-idx="1">Leiden</div><div class="quiz-opt" data-idx="2">DBSCAN</div><div class="quiz-opt" data-idx="3">PAM</div>
+</div><div class="quiz-feedback"></div></div>
+<div class="quiz-q" data-answer="2" data-exp-zh="pseudo-bulk + DESeq2/edgeR 控制 cluster 內 cells 的偽複製問題，是現代 scRNA-seq DE 標準。" data-exp-en="Pseudo-bulk + DESeq2/edgeR controls pseudo-replication of within-cluster cells — the modern scRNA-seq DE standard.">
+<p data-lang="zh">2. scRNA-seq 在 cohort 間做 DE，最被推薦的方法？</p>
+<p data-lang="en">2. Recommended scRNA-seq DE across cohorts?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">t-test per cell</div><div class="quiz-opt" data-idx="1">Wilcoxon per cell</div><div class="quiz-opt" data-idx="2">pseudo-bulk + DESeq2 / edgeR</div><div class="quiz-opt" data-idx="3">PCA loading</div>
+</div><div class="quiz-feedback"></div></div>
+<div class="quiz-q" data-answer="0" data-exp-zh="GPTCelltype (2024) 是把 marker list 餵給 LLM 做 cell type annotation 的工具。" data-exp-en="GPTCelltype (2024) feeds marker lists to an LLM for cell-type annotation.">
+<p data-lang="zh">3. 2024 後常見的 LLM-assisted cell type 註釋工具？</p>
+<p data-lang="en">3. A 2024+ LLM-assisted cell-type annotation tool?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">GPTCelltype</div><div class="quiz-opt" data-idx="1">DESeq2</div><div class="quiz-opt" data-idx="2">Bismark</div><div class="quiz-opt" data-idx="3">CNVkit</div>
+</div><div class="quiz-feedback"></div></div>
+</section>
+
+<nav class="page-nav">
+<a href="08-bulk-rnaseq.html"><span class="nav-dir" data-zh="← 上一章" data-en="← Prev">← 上一章</span><span class="nav-title" data-zh="Ch 8 · Bulk RNA-seq 差異表達分析" data-en="Ch 8 · Bulk RNA-seq Differential Expression">Ch 8 · Bulk RNA-seq 差異表達分析</span></a>
+<a href="10-spatial-omics.html"><span class="nav-dir" data-zh="下一章 →" data-en="Next →">下一章 →</span><span class="nav-title" data-zh="Ch 10 · 空間轉錄組 (Spatial)" data-en="Ch 10 · Spatial Transcriptomics">Ch 10 · 空間轉錄組 (Spatial)</span></a>
+</nav>
+</main>
+
+<footer class="site-footer">© Charlene — HTBA Interactive Tutorial</footer>
+<script src="i18n.js"></script>
+<script>
+window.addEventListener('scroll',()=>{const h=document.documentElement;document.getElementById('progressBar').style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100+'%';});
+function switchTab(b,id){const p=b.closest('.code-tabs');p.querySelectorAll('.code-tab-btn').forEach(x=>x.classList.remove('active'));p.querySelectorAll('.code-tab-content').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById(id).classList.add('active');}
+document.querySelectorAll('.quiz-q').forEach(q=>{const ans=+q.dataset.answer;q.querySelectorAll('.quiz-opt').forEach(o=>{o.onclick=()=>{if(q.dataset.done)return;q.dataset.done=1;const i=+o.dataset.idx,fb=q.querySelector('.quiz-feedback');q.querySelectorAll('.quiz-opt').forEach(x=>{if(+x.dataset.idx===ans)x.classList.add('correct');else if(+x.dataset.idx===i)x.classList.add('wrong');});if(i===ans){fb.className='quiz-feedback show correct-fb';fb.textContent='✓ '+(window.I18n&&window.I18n.get()==='en'?q.dataset.expEn:q.dataset.expZh);}else{fb.className='quiz-feedback show wrong-fb';fb.textContent='✗ '+(window.I18n&&window.I18n.get()==='en'?q.dataset.expEn:q.dataset.expZh);}};});});
+// Leiden sim
+const cv=document.getElementById('lkCv'),ctx=cv.getContext('2d');
+const pts=[];const trueK=8;
+function ran(){let u=0,v=0;while(u===0)u=Math.random();while(v===0)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+for(let k=0;k<trueK;k++){const cx=200+Math.cos(k/trueK*Math.PI*2)*180,cy=130+Math.sin(k/trueK*Math.PI*2)*80;for(let i=0;i<60;i++)pts.push({x:cx+ran()*22,y:cy+ran()*18,k});}
+const colors=['#0e7490','#f97316','#7c3aed','#059669','#dc2626','#0891b2','#d97706','#9d174d','#155e75','#ea580c','#22d3ee','#fbbf24','#a78bfa','#22c55e','#ef4444','#3b82f6','#f43f5e'];
+function draw(){
+  const r=+document.getElementById('lkR').value;
+  document.getElementById('lkV').textContent=r.toFixed(2);
+  const kEff=Math.max(2,Math.round(2+r*8));
+  const w=cv.width=cv.offsetWidth,h=cv.height=cv.offsetHeight;
+  ctx.fillStyle='#eef5f7';ctx.fillRect(0,0,w,h);
+  pts.forEach(p=>{const kAssign=Math.floor((p.k*kEff/trueK + (Math.abs(p.x+p.y)%kEff)*0.1)) % kEff;ctx.fillStyle=colors[kAssign%colors.length];ctx.beginPath();ctx.arc(p.x/420*w,p.y/270*h,3,0,Math.PI*2);ctx.fill();});
+  document.getElementById('lkN').textContent='K clusters: '+kEff;
+  const stat=kEff<5?'Under-clustered':(kEff>14?'Over-clustered':'Good range');
+  const cl=kEff<5?'warn':(kEff>14?'fail':'pass');
+  document.getElementById('lkW').textContent='Status: '+stat;
+  document.getElementById('lkW').className='sim-stat '+cl;
+}
+document.getElementById('lkR').oninput=draw;window.addEventListener('resize',draw);setTimeout(draw,50);
+</script>
+</body></html>

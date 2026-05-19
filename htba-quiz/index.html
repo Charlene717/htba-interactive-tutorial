@@ -1,0 +1,134 @@
+<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Quiz — HTBA Tutorial</title>
+<link rel="stylesheet" href="../styles.css">
+<style>
+.quiz-app{max-width:920px;margin:0 auto;padding:36px 24px 80px}
+.profile-bar{display:flex;gap:8px;align-items:center;background:var(--c-surface);border:1px solid var(--c-border-light);border-radius:var(--radius-lg);padding:14px 18px;margin-bottom:20px;flex-wrap:wrap}
+.profile-bar select,.profile-bar input{padding:6px 10px;border:1px solid var(--c-border);border-radius:6px;font-family:var(--font-body);background:#fff}
+.profile-bar button{background:var(--c-accent);color:#fff;border:none;border-radius:6px;padding:6px 14px;cursor:pointer;font-weight:600}
+.profile-bar button:hover{background:var(--c-accent-dark)}
+.profile-bar button.secondary{background:var(--c-bg-alt);color:var(--c-ink)}
+.mode-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin:20px 0}
+.mode-card{background:var(--c-surface);border:1px solid var(--c-border-light);border-radius:var(--radius-lg);padding:22px;cursor:pointer;transition:var(--transition);text-align:left}
+.mode-card:hover{border-color:var(--c-accent);box-shadow:var(--shadow-md);transform:translateY(-2px)}
+.mode-card h4{font-family:var(--font-display);font-size:1.15rem;margin-bottom:6px;color:var(--c-accent-dark)}
+.mode-card p{font-size:.86rem;color:var(--c-ink-muted);margin:0}
+.chapter-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:14px}
+.chapter-btn{padding:10px;background:var(--c-bg-alt);border:1px solid var(--c-border-light);border-radius:8px;cursor:pointer;font-size:.84rem;font-weight:600;text-align:center;transition:var(--transition);color:var(--c-ink)}
+.chapter-btn:hover{background:var(--c-accent-light);border-color:var(--c-accent);color:var(--c-accent-dark)}
+.chapter-btn .ch-progress{display:block;font-size:.7rem;color:var(--c-ink-muted);margin-top:2px}
+.progress-card{background:linear-gradient(135deg,#ecfeff,#fff7ed);border-radius:var(--radius-lg);padding:18px 22px;margin-bottom:18px;border:1px solid var(--c-border-light)}
+.progress-card h3{font-family:var(--font-display);margin-bottom:8px;color:var(--c-accent-dark)}
+.progress-bar-q{height:10px;background:var(--c-bg-alt);border-radius:5px;overflow:hidden;margin:8px 0}
+.progress-bar-q span{display:block;height:100%;background:linear-gradient(90deg,var(--c-accent),var(--c-highlight));transition:width .4s}
+.question-card{background:var(--c-surface);border:1px solid var(--c-border-light);border-radius:var(--radius-lg);padding:28px;margin-bottom:18px;animation:fadeUp .35s ease}
+.question-card .q-num{font-size:.78rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--c-accent);margin-bottom:6px}
+.question-card .q-text{font-family:var(--font-display);font-size:1.15rem;font-weight:600;margin-bottom:14px;color:var(--c-ink);line-height:1.5}
+.options-list{display:flex;flex-direction:column;gap:8px}
+.option-row{display:flex;align-items:flex-start;gap:10px;padding:12px 16px;background:var(--c-surface);border:2px solid var(--c-border-light);border-radius:8px;cursor:pointer;transition:var(--transition);font-size:.92rem}
+.option-row:hover{border-color:var(--c-accent);background:var(--c-accent-light)}
+.option-row.selected{border-color:var(--c-accent);background:var(--c-accent-light)}
+.option-row.correct{background:#d1fae5;border-color:#059669}
+.option-row.wrong{background:#fee2e2;border-color:#dc2626}
+.option-row input{margin-top:3px}
+.explain{margin-top:14px;padding:14px 18px;background:var(--c-accent-light);border-radius:8px;font-size:.9rem;line-height:1.6;display:none;border-left:3px solid var(--c-accent)}
+.explain.show{display:block}
+.explain.wrong-fb{background:#fee2e2;border-left-color:#dc2626;color:#7f1d1d}
+.explain.correct-fb{background:#d1fae5;border-left-color:#059669;color:#064e3b}
+.controls{display:flex;justify-content:space-between;gap:10px;margin:24px 0;flex-wrap:wrap}
+.controls button{background:var(--c-accent);color:#fff;border:none;border-radius:8px;padding:10px 20px;cursor:pointer;font-weight:600;font-size:.94rem;transition:var(--transition)}
+.controls button:hover:not(:disabled){background:var(--c-accent-dark)}
+.controls button:disabled{opacity:.4;cursor:not-allowed}
+.controls button.secondary{background:var(--c-bg-alt);color:var(--c-ink);}
+.controls button.secondary:hover:not(:disabled){background:var(--c-border)}
+.results-card{background:linear-gradient(135deg,var(--c-accent-light),var(--c-highlight-light));border-radius:var(--radius-lg);padding:32px;text-align:center;margin:20px 0}
+.results-card h2{font-family:var(--font-display);font-size:2.2rem;color:var(--c-accent-dark);margin-bottom:10px}
+.score-badge{font-size:3rem;font-weight:700;color:var(--c-accent);margin:10px 0}
+.tag-q{display:inline-block;padding:2px 10px;border-radius:6px;font-size:.7rem;font-weight:700;margin-right:6px;text-transform:uppercase;letter-spacing:.5px;background:var(--c-bg-alt);color:var(--c-ink-light)}
+.tag-q.tag-single{background:var(--c-accent-light);color:var(--c-accent-dark)}
+.tag-q.tag-multi{background:var(--c-highlight-light);color:#c2410c}
+.tag-q.tag-tf{background:#dcfce7;color:#166534}
+.hidden{display:none!important}
+</style>
+</head><body>
+<nav class="top-nav"><div class="top-nav-inner">
+  <a href="../index.html" class="top-nav-brand"><span>🧬</span> <span data-zh="高通量分析與整合" data-en="HTBA Tutorial">高通量分析與整合</span></a>
+  <ul class="top-nav-links">
+    <li><a href="../index.html" data-zh="教程" data-en="Tutorial">教程</a></li>
+    <li><a href="index.html" class="active">Quiz</a></li>
+  </ul>
+</div></nav>
+
+<header class="page-hero"><div class="step-badge">QUIZ · 200 Questions</div>
+<h1 data-zh="🧬 高通量分析與整合 互動式考題" data-en="🧬 High-Throughput Bioanalysis Interactive Quiz">🧬 高通量分析與整合 互動式考題</h1>
+<p class="subtitle" data-lang="zh">20 章 × 10 題（6 單選 + 2 多選 + 2 是非）= 200 雙語題庫。多 profile、章節練習、隨機 20、錯題複習、完整模擬考。</p>
+<p class="subtitle" data-lang="en">20 chapters × 10 questions (6 single + 2 multi + 2 T/F) = 200 bilingual items. Multi-profile, chapter practice, random-20, wrong-answer review, full exam.</p>
+</header>
+
+<main class="quiz-app">
+
+<div id="homeView">
+  <div class="profile-bar">
+    <span data-zh="使用者：" data-en="User:">使用者：</span>
+    <select id="profileSel"></select>
+    <input id="newProfileName" type="text" placeholder="新使用者" style="max-width:160px">
+    <button onclick="addProfile()" data-zh="新增" data-en="Add">新增</button>
+    <button class="secondary" onclick="deleteProfile()" data-zh="刪除目前" data-en="Delete">刪除目前</button>
+  </div>
+
+  <div class="progress-card">
+    <h3>📈 <span data-zh="學習進度" data-en="Progress">學習進度</span></h3>
+    <div class="progress-bar-q"><span id="totalProgressBar"></span></div>
+    <p style="font-size:.88rem;color:var(--c-ink-light);margin:0" id="totalProgressLabel"></p>
+  </div>
+
+  <h2 style="font-family:var(--font-display);margin-top:30px;margin-bottom:10px;" data-zh="選擇練習模式" data-en="Choose a mode">選擇練習模式</h2>
+  <div class="mode-grid">
+    <div class="mode-card" onclick="startMode('chapter')"><h4>📚 <span data-zh="按章節" data-en="By chapter">按章節</span></h4><p data-lang="zh">針對單一章節練習 10 題；可重複作答看正解。</p><p data-lang="en">Practice 10 Qs from a single chapter; replay to see solutions.</p></div>
+    <div class="mode-card" onclick="startMode('random20')"><h4>🎲 <span data-zh="隨機 20 題" data-en="Random 20">隨機 20 題</span></h4><p data-lang="zh">從 200 題隨機抽 20 題，最適合 15 分鐘暖身。</p><p data-lang="en">Random sample of 20 — perfect 15-min warm-up.</p></div>
+    <div class="mode-card" onclick="startMode('wrong')"><h4>🔁 <span data-zh="錯題複習" data-en="Wrong-answer review">錯題複習</span></h4><p data-lang="zh">回顧你答錯過的題目，直到全部答對才從錯題清單移除。</p><p data-lang="en">Review questions you answered wrong, until corrected.</p></div>
+    <div class="mode-card" onclick="startMode('full')"><h4>📝 <span data-zh="完整模擬考" data-en="Full exam">完整模擬考</span></h4><p data-lang="zh">200 題完整測驗，最後給總成績與按章節分。</p><p data-lang="en">Full 200-question exam, with overall + per-chapter scores.</p></div>
+  </div>
+
+  <h2 style="font-family:var(--font-display);margin-top:30px;margin-bottom:10px;" data-zh="或從章節進入" data-en="Or jump to a chapter">或從章節進入</h2>
+  <div class="chapter-grid" id="chapterGrid"></div>
+</div>
+
+<div id="quizView" class="hidden">
+  <div class="profile-bar">
+    <span id="quizModeLabel" style="font-weight:600;"></span>
+    <span style="flex:1"></span>
+    <button class="secondary" onclick="backHome()" data-zh="← 回主選單" data-en="← Home">← 回主選單</button>
+  </div>
+  <div class="progress-card">
+    <div class="progress-bar-q"><span id="quizProgressBar"></span></div>
+    <p style="font-size:.88rem;color:var(--c-ink-light);margin:0" id="quizProgressLabel"></p>
+  </div>
+  <div id="questionContainer"></div>
+  <div class="controls">
+    <button class="secondary" id="btnPrev" onclick="prevQ()" data-zh="← 上一題" data-en="← Prev">← 上一題</button>
+    <button id="btnSubmit" onclick="submitQ()" data-zh="提交" data-en="Submit">提交</button>
+    <button id="btnNext" onclick="nextQ()" data-zh="下一題 →" data-en="Next →">下一題 →</button>
+  </div>
+</div>
+
+<div id="resultView" class="hidden">
+  <div class="results-card">
+    <h2 data-zh="完成！" data-en="Done!">完成！</h2>
+    <div class="score-badge" id="finalScore">—</div>
+    <p style="font-size:1rem;color:var(--c-ink-light);" id="finalSummary"></p>
+  </div>
+  <div id="resultDetail"></div>
+  <div class="controls">
+    <button class="secondary" onclick="backHome()" data-zh="回主選單" data-en="Home">回主選單</button>
+    <button onclick="restartQuiz()" data-zh="再來一次" data-en="Restart">再來一次</button>
+  </div>
+</div>
+
+</main>
+
+<footer class="site-footer">© Charlene — HTBA Quiz · 200 questions · bilingual</footer>
+<script src="../i18n.js"></script>
+<script src="quiz-data.js"></script>
+<script src="quiz-engine.js"></script>
+</body></html>

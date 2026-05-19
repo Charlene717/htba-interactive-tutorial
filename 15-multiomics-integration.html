@@ -1,0 +1,207 @@
+<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Ch 15: 多體學垂直整合 — HTBA</title>
+<link rel="stylesheet" href="styles.css">
+</head><body>
+<nav class="top-nav"><div class="top-nav-inner">
+  <a href="index.html" class="top-nav-brand"><span>🧬</span> <span data-zh="高通量分析與整合" data-en="HTBA Tutorial">高通量分析與整合</span></a>
+  <ul class="top-nav-links"><li><a href="01-overview.html">01</a></li><li><a href="02-experimental-design.html">02</a></li><li><a href="03-upstream-pipeline.html">03</a></li><li><a href="04-genomics-variants.html">04</a></li><li><a href="05-structural-variants.html">05</a></li><li><a href="06-atac-cutrun.html">06</a></li><li><a href="07-dna-methylation.html">07</a></li><li><a href="08-bulk-rnaseq.html">08</a></li><li><a href="09-scrnaseq.html">09</a></li><li><a href="10-spatial-omics.html">10</a></li><li><a href="11-long-read-rna.html">11</a></li><li><a href="12-proteomics.html">12</a></li><li><a href="13-metabolomics.html">13</a></li><li><a href="14-batch-correction.html">14</a></li><li><a href="15-multiomics-integration.html" class="active">15</a></li><li><a href="16-spatial-singlecell.html">16</a></li><li><a href="17-functional-enrichment.html">17</a></li><li><a href="18-network-analysis.html">18</a></li><li><a href="19-foundation-models.html">19</a></li><li><a href="20-reproducibility.html">20</a></li>
+    <li><a href="references/index.html" data-zh="📚 參考資料" data-en="📚 References">📚 參考資料</a></li>
+  </ul>
+</div></nav>
+<div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
+
+<header class="page-hero"><div class="step-badge">CH 15 / 20 · BLOCK 5 INTEGRATION</div>
+<h1 data-zh="多體學垂直整合" data-en="Multi-Omics Vertical Integration">多體學垂直整合</h1>
+<p class="subtitle" data-lang="zh">MOFA+、Seurat WNN、MultiVI、totalVI、GLUE、DIABLO — 同樣本跨組學整合方法總覽。</p>
+<p class="subtitle" data-lang="en">MOFA+, Seurat WNN, MultiVI, totalVI, GLUE, DIABLO — same-sample cross-omics integration methods.</p>
+</header>
+
+<main class="content-wrap">
+
+<section class="section">
+<div class="section-label" data-zh="兩種整合維度" data-en="TWO INTEGRATION AXES">兩種維度</h2>
+<h2 data-zh="一、水平 vs. 垂直整合" data-en="I. Horizontal vs. Vertical Integration">一、水平 vs. 垂直</h2>
+<div class="card-grid cols-2">
+<div class="card"><h4>↔️ <span data-zh="水平 (Horizontal)" data-en="Horizontal">水平整合</span></h4><p data-lang="zh">同 omics × 跨樣本（Ch 14）。「拼接 cohort」。</p><p data-lang="en">Same omics × across samples (Ch 14). "Stitch cohorts together."</p></div>
+<div class="card"><h4>↕️ <span data-zh="垂直 (Vertical)" data-en="Vertical">垂直整合</span></h4><p data-lang="zh"><strong>同樣本 × 跨 omics</strong>（本章）。需要每個樣本都做了 ≥ 2 種 omics（如 RNA + ATAC + Protein），不然只能用 anchor-based 對齊。</p><p data-lang="en"><strong>Same sample × across omics</strong> (this chapter). Requires ≥ 2 omics per sample (e.g., RNA + ATAC + Protein); otherwise anchor-based alignment is needed.</p></div>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="方法家族" data-en="METHOD FAMILIES">方法家族</h2>
+<h2 data-zh="二、四大方法家族" data-en="II. Four Method Families">二、四大方法家族</h2>
+<div class="card-grid cols-2">
+<div class="card"><h4>🧮 <span data-zh="因子模型 (factor models)" data-en="Factor models">因子模型</span></h4>
+<div data-lang="zh"><p>找出多 omics 共享的 latent factor，每 factor 解釋多少變異來自哪 omics。</p><p><strong>代表：</strong>MOFA / MOFA+ / MEFISTO（時間軸）、JIVE、iCluster+、DIABLO（mixOmics）。</p></div>
+<div data-lang="en"><p>Identify latent factors shared across omics; each factor explains variance from which omics layers.</p><p><strong>Examples:</strong> MOFA / MOFA+ / MEFISTO (temporal), JIVE, iCluster+, DIABLO (mixOmics).</p></div>
+</div>
+<div class="card"><h4>🤖 <span data-zh="深度生成模型 (VAE)" data-en="Deep generative (VAE)">深度生成模型</span></h4>
+<div data-lang="zh"><p>每 omics 一個 encoder，共用 latent space。</p><p><strong>代表：</strong>totalVI（RNA+ADT, CITE-seq）、MultiVI（RNA+ATAC, 10x Multiome）、Multigrate、UnitedNet、scMM。</p></div>
+<div data-lang="en"><p>One encoder per omics, shared latent space.</p><p><strong>Examples:</strong> totalVI (RNA+ADT, CITE-seq), MultiVI (RNA+ATAC, 10x Multiome), Multigrate, UnitedNet, scMM.</p></div>
+</div>
+<div class="card"><h4>🕸️ <span data-zh="圖學習 / 配對" data-en="Graph / pairing">圖學習 / 配對</h4>
+<div data-lang="zh"><p>用 graph attention / regulatory prior 跨 omics 對齊。</p><p><strong>代表：</strong>WNN（Seurat v4, 加權最近鄰）、GLUE（scglue, RNA+ATAC graph-linked）、UINMF。</p></div>
+<div data-lang="en"><p>Graph attention or regulatory priors align across omics.</p><p><strong>Examples:</strong> WNN (Seurat v4, weighted nearest neighbors), GLUE (scglue, RNA+ATAC graph-linked), UINMF.</p></div>
+</div>
+<div class="card"><h4>🎯 <span data-zh="基於模式 (Matrix factorization)" data-en="Matrix factorization">矩陣分解</span></h4>
+<div data-lang="zh"><p>NMF / SVD 跨 omics 共同分解。</p><p><strong>代表：</strong>LIGER（iNMF）、scAI、CoGAPS。</p></div>
+<div data-lang="en"><p>NMF / SVD jointly decompose across omics.</p><p><strong>Examples:</strong> LIGER (iNMF), scAI, CoGAPS.</p></div>
+</div>
+</div>
+<div class="callout tip"><span class="callout-icon">💡</span><div>
+<span data-lang="zh"><strong>2024 Nature Methods benchmark：</strong>Seurat WNN、Multigrate、Matilda、UnitedNet 在多 cohort 上表現好；GLUE 在 scRNA+scATAC 對齊上勝出；MOFA+ 在概念上最直觀但記憶體大、不擴展。MOFA+ 在 bulk multi-omics 仍是最常用的入門工具。</span>
+<span data-lang="en"><strong>2024 Nature Methods benchmark:</strong> Seurat WNN, Multigrate, Matilda, UnitedNet perform well across cohorts; GLUE wins on scRNA + scATAC alignment; MOFA+ is the most interpretable but memory-heavy and doesn't scale. MOFA+ remains the most popular entry point for bulk multi-omics.</span>
+</div></div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="選型決策樹" data-en="DECISION TREE">選型決策樹</h2>
+<h2 data-zh="三、方法選擇決策樹" data-en="III. Method Selection Decision Tree">三、選型決策</h2>
+<div class="decision-tree">
+<h4>🌳 <span data-zh="按資料形態挑工具" data-en="Pick a tool by data shape">按資料形態挑工具</span></h4>
+<div data-lang="zh">
+<div class="dt-node"><span class="dt-q">Q1</span><div>每個樣本都做 ≥ 2 種 omics（matched）？ <span class="dt-arrow">→ 否 →</span> 用 <strong>GLUE</strong> / <strong>Tangram</strong> / <strong>Conos</strong> 做 unmatched 對齊；<span class="dt-arrow">→ 是 →</span> 繼續 Q2。</div></div>
+<div class="dt-node"><span class="dt-q">Q2</span><div>Bulk 還是 single-cell？ <span class="dt-arrow">Bulk →</span> <strong>MOFA+</strong>（首選） / DIABLO / iCluster+；<span class="dt-arrow">Single-cell →</span> 繼續 Q3。</div></div>
+<div class="dt-node"><span class="dt-q">Q3</span><div>CITE-seq (RNA+ADT)？ <span class="dt-arrow">→</span> <strong>totalVI</strong> / Seurat WNN。10x Multiome (RNA+ATAC)？ <span class="dt-arrow">→</span> <strong>MultiVI</strong> / Seurat WNN / GLUE。</div></div>
+<div class="dt-node"><span class="dt-q">Q4</span><div>規模 &gt; 500k cells？ <span class="dt-arrow">→</span> 優先用 scVI 家族（VAE 容易 scale）。</div></div>
+</div>
+<div data-lang="en">
+<div class="dt-node"><span class="dt-q">Q1</span><div>Are ≥ 2 omics measured on each sample (matched)? <span class="dt-arrow">→ No →</span> use <strong>GLUE</strong> / <strong>Tangram</strong> / <strong>Conos</strong> for unmatched alignment; <span class="dt-arrow">→ Yes →</span> go to Q2.</div></div>
+<div class="dt-node"><span class="dt-q">Q2</span><div>Bulk or single-cell? <span class="dt-arrow">Bulk →</span> <strong>MOFA+</strong> (first choice) / DIABLO / iCluster+; <span class="dt-arrow">Single-cell →</span> Q3.</div></div>
+<div class="dt-node"><span class="dt-q">Q3</span><div>CITE-seq (RNA+ADT)? <span class="dt-arrow">→</span> <strong>totalVI</strong> / Seurat WNN. 10x Multiome (RNA+ATAC)? <span class="dt-arrow">→</span> <strong>MultiVI</strong> / Seurat WNN / GLUE.</div></div>
+<div class="dt-node"><span class="dt-q">Q4</span><div>Scale &gt; 500k cells? <span class="dt-arrow">→</span> prefer the scVI family (VAEs scale well).</div></div>
+</div>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="互動" data-en="INTERACTIVE">互動</h2>
+<h2 data-zh="四、MOFA+ factor 解釋變異模擬" data-en="IV. MOFA+ Factor Variance Sim">四、MOFA+ 因子變異</h2>
+<div data-lang="zh"><p>MOFA+ 輸出每個 factor 在每個 omics 解釋的變異比例。某些 factor 為「共享 (shared)」、某些只在單一 omics 強。</p></div>
+<div data-lang="en"><p>MOFA+ outputs the fraction of variance explained by each factor in each omics. Some factors are "shared," others active in a single omics.</p></div>
+<div class="interactive-panel">
+<div class="slider-group"><label><span data-zh="共享強度 (random seed)" data-en="Shared strength (seed)">共享強度</span><span id="mofV">3</span></label><input type="range" id="mof" min="1" max="6" value="3" step="1"></div>
+<canvas id="mofCv" style="background:var(--c-surface-alt);border-radius:8px;width:100%;height:280px"></canvas>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="程式碼" data-en="CODE">程式碼</div>
+<h2 data-zh="五、MOFA+ / WNN / MultiVI 實作" data-en="V. MOFA+ / WNN / MultiVI Code">五、實作</h2>
+<div class="code-tabs"><div class="code-tab-btns"><button class="code-tab-btn active" onclick="switchTab(this,'r1')">R / MOFA+</button><button class="code-tab-btn" onclick="switchTab(this,'r2')">R / Seurat WNN</button><button class="code-tab-btn" onclick="switchTab(this,'py1')">Python / MultiVI</button><button class="code-tab-btn" onclick="switchTab(this,'py2')">Python / GLUE</button></div>
+<div class="code-tab-content active" id="r1"><pre><span class="comment"># MOFA+ — 多 omics 因子分析</span>
+<span class="func">library</span>(MOFA2)
+data &lt;- <span class="func">list</span>(RNA=rna_matrix, ATAC=atac_matrix, Methyl=methyl_matrix)
+mofa &lt;- <span class="func">create_mofa</span>(data)
+
+mod_opts &lt;- <span class="func">get_default_model_options</span>(mofa)
+mod_opts$num_factors &lt;- <span class="num">15</span>
+mofa &lt;- <span class="func">prepare_mofa</span>(mofa, model_options=mod_opts)
+
+mofa &lt;- <span class="func">run_mofa</span>(mofa, outfile=<span class="str">"mofa_model.hdf5"</span>)
+
+<span class="comment"># 解釋每 factor 變異</span>
+<span class="func">plot_variance_explained</span>(mofa, x=<span class="str">"view"</span>, y=<span class="str">"factor"</span>)
+factors &lt;- <span class="func">get_factors</span>(mofa)[[<span class="num">1</span>]]
+<span class="comment"># 把 factor 當 PC 一樣下游分群、做 GSEA</span></pre></div>
+<div class="code-tab-content" id="r2"><pre><span class="comment"># Seurat WNN — RNA + ADT (CITE-seq) 或 RNA + ATAC</span>
+<span class="func">library</span>(Seurat)
+obj &lt;- <span class="func">CreateSeuratObject</span>(rna) |&gt; <span class="func">SCTransform</span>() |&gt;
+        <span class="func">RunPCA</span>(reduction.name=<span class="str">"pca_rna"</span>)
+obj[[<span class="str">"ADT"</span>]] &lt;- <span class="func">CreateAssayObject</span>(adt)
+<span class="func">DefaultAssay</span>(obj) &lt;- <span class="str">"ADT"</span>
+obj &lt;- <span class="func">NormalizeData</span>(obj, normalization.method=<span class="str">"CLR"</span>, margin=<span class="num">2</span>) |&gt;
+        <span class="func">ScaleData</span>() |&gt; <span class="func">RunPCA</span>(reduction.name=<span class="str">"pca_adt"</span>, npcs=<span class="num">20</span>)
+
+obj &lt;- <span class="func">FindMultiModalNeighbors</span>(obj,
+         reduction.list = <span class="func">list</span>(<span class="str">"pca_rna"</span>, <span class="str">"pca_adt"</span>),
+         dims.list = <span class="func">list</span>(<span class="num">1</span>:<span class="num">30</span>, <span class="num">1</span>:<span class="num">20</span>))
+obj &lt;- <span class="func">RunUMAP</span>(obj, nn.name=<span class="str">"weighted.nn"</span>, reduction.name=<span class="str">"wnn.umap"</span>)
+obj &lt;- <span class="func">FindClusters</span>(obj, graph.name=<span class="str">"wsnn"</span>, algorithm=<span class="num">4</span>)</pre></div>
+<div class="code-tab-content" id="py1"><pre><span class="comment"># MultiVI — 10x Multiome (RNA + ATAC) integration</span>
+<span class="kw">import</span> scvi, anndata <span class="kw">as</span> ad
+adata = ad.<span class="func">concat</span>([adata_rna, adata_atac], axis=<span class="num">1</span>, join=<span class="str">"outer"</span>)
+adata.var[<span class="str">"modality"</span>] = [<span class="str">"RNA"</span>]*adata_rna.shape[<span class="num">1</span>] + [<span class="str">"ATAC"</span>]*adata_atac.shape[<span class="num">1</span>]
+
+scvi.model.MULTIVI.<span class="func">setup_anndata</span>(adata, batch_key=<span class="str">"sample"</span>)
+m = scvi.model.<span class="func">MULTIVI</span>(adata,
+       n_genes=(adata.var[<span class="str">"modality"</span>]==<span class="str">"RNA"</span>).sum(),
+       n_regions=(adata.var[<span class="str">"modality"</span>]==<span class="str">"ATAC"</span>).sum())
+m.<span class="func">train</span>()
+adata.obsm[<span class="str">"X_multivi"</span>] = m.<span class="func">get_latent_representation</span>()</pre></div>
+<div class="code-tab-content" id="py2"><pre><span class="comment"># GLUE — graph-linked unified embedding（unmatched 也可）</span>
+<span class="kw">import</span> scglue, networkx <span class="kw">as</span> nx
+<span class="comment"># 建立 prior knowledge graph（RNA-ATAC link 由 peak-gene proximity）</span>
+guidance = scglue.genomics.<span class="func">rna_anchored_guidance_graph</span>(rna_ad, atac_ad)
+
+scglue.models.<span class="func">configure_dataset</span>(rna_ad, <span class="str">"NB"</span>, use_highly_variable=<span class="kw">True</span>, use_layer=<span class="str">"counts"</span>)
+scglue.models.<span class="func">configure_dataset</span>(atac_ad, <span class="str">"NB"</span>, use_highly_variable=<span class="kw">True</span>, use_rep=<span class="str">"X_lsi"</span>)
+glue = scglue.models.<span class="func">fit_SCGLUE</span>({<span class="str">"rna"</span>:rna_ad, <span class="str">"atac"</span>:atac_ad}, guidance)
+rna_ad.obsm[<span class="str">"X_glue"</span>]  = glue.<span class="func">encode_data</span>(<span class="str">"rna"</span>, rna_ad)
+atac_ad.obsm[<span class="str">"X_glue"</span>] = glue.<span class="func">encode_data</span>(<span class="str">"atac"</span>, atac_ad)</pre></div>
+</div>
+</section>
+
+<section class="quiz-section">
+<h3>📝 <span data-zh="自我檢測" data-en="Self-Check">自我檢測</span></h3>
+<div class="quiz-q" data-answer="2" data-exp-zh="MOFA+ 用因子模型分解多 omics 共享 / 私有變異，是 bulk multi-omics 主流。" data-exp-en="MOFA+ uses factor models to decompose shared / private variance across omics — the bulk multi-omics workhorse.">
+<p data-lang="zh">1. Bulk multi-omics 整合最常見的入門工具？</p>
+<p data-lang="en">1. Most common entry tool for bulk multi-omics integration?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">Harmony</div><div class="quiz-opt" data-idx="1">DeepVariant</div><div class="quiz-opt" data-idx="2">MOFA+</div><div class="quiz-opt" data-idx="3">XCMS</div>
+</div><div class="quiz-feedback"></div></div>
+<div class="quiz-q" data-answer="1" data-exp-zh="WNN（Seurat v4）以加權最近鄰結合 RNA + ADT，是 CITE-seq 標準整合工具。" data-exp-en="WNN (Seurat v4) combines RNA + ADT via weighted nearest neighbors — the standard CITE-seq integration.">
+<p data-lang="zh">2. CITE-seq (RNA + ADT) 標準整合工具？</p>
+<p data-lang="en">2. Standard integration tool for CITE-seq (RNA + ADT)?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">ComBat</div><div class="quiz-opt" data-idx="1">Seurat WNN</div><div class="quiz-opt" data-idx="2">Bismark</div><div class="quiz-opt" data-idx="3">CNVkit</div>
+</div><div class="quiz-feedback"></div></div>
+<div class="quiz-q" data-answer="3" data-exp-zh="GLUE 用 prior graph 對齊 unmatched scRNA + scATAC，是 unmatched scenarios 主流。" data-exp-en="GLUE uses prior graphs to align unmatched scRNA + scATAC — the go-to for unmatched scenarios.">
+<p data-lang="zh">3. 不同樣本各自做 scRNA 與 scATAC（unmatched），想跨 omics 對齊？</p>
+<p data-lang="en">3. Different samples have scRNA or scATAC (unmatched) — to align across omics use?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">MaxQuant</div><div class="quiz-opt" data-idx="1">Mutect2</div><div class="quiz-opt" data-idx="2">MACS3</div><div class="quiz-opt" data-idx="3">GLUE</div>
+</div><div class="quiz-feedback"></div></div>
+</section>
+
+<nav class="page-nav">
+<a href="14-batch-correction.html"><span class="nav-dir" data-zh="← 上一章" data-en="← Prev">← 上一章</span><span class="nav-title" data-zh="Ch 14 · 批次效應與水平整合" data-en="Ch 14 · Batch Effects &amp; Horizontal Integration">Ch 14 · 批次效應與水平整合</span></a>
+<a href="16-spatial-singlecell.html"><span class="nav-dir" data-zh="下一章 →" data-en="Next →">下一章 →</span><span class="nav-title" data-zh="Ch 16 · 空間 × 單細胞整合" data-en="Ch 16 · Spatial × Single-cell Integration">Ch 16 · 空間 × 單細胞整合</span></a>
+</nav>
+</main>
+
+<footer class="site-footer">© Charlene — HTBA Interactive Tutorial</footer>
+<script src="i18n.js"></script>
+<script>
+window.addEventListener('scroll',()=>{const h=document.documentElement;document.getElementById('progressBar').style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100+'%';});
+function switchTab(b,id){const p=b.closest('.code-tabs');p.querySelectorAll('.code-tab-btn').forEach(x=>x.classList.remove('active'));p.querySelectorAll('.code-tab-content').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById(id).classList.add('active');}
+document.querySelectorAll('.quiz-q').forEach(q=>{const ans=+q.dataset.answer;q.querySelectorAll('.quiz-opt').forEach(o=>{o.onclick=()=>{if(q.dataset.done)return;q.dataset.done=1;const i=+o.dataset.idx,fb=q.querySelector('.quiz-feedback');q.querySelectorAll('.quiz-opt').forEach(x=>{if(+x.dataset.idx===ans)x.classList.add('correct');else if(+x.dataset.idx===i)x.classList.add('wrong');});if(i===ans){fb.className='quiz-feedback show correct-fb';fb.textContent='✓ '+(window.I18n&&window.I18n.get()==='en'?q.dataset.expEn:q.dataset.expZh);}else{fb.className='quiz-feedback show wrong-fb';fb.textContent='✗ '+(window.I18n&&window.I18n.get()==='en'?q.dataset.expEn:q.dataset.expZh);}};});});
+// MOFA factor heatmap
+const cv=document.getElementById('mofCv'),ctx=cv.getContext('2d');
+function draw(){
+  const s=+document.getElementById('mof').value;
+  document.getElementById('mofV').textContent=s;
+  const w=cv.width=cv.offsetWidth,h=cv.height=cv.offsetHeight;
+  ctx.fillStyle='#eef5f7';ctx.fillRect(0,0,w,h);
+  const nF=10,nO=4; const cw=(w-120)/nF, ch=(h-50)/nO;
+  const omics=['RNA','ATAC','Protein','Methyl'];
+  // generate matrix by seed
+  const rand=(x,y)=>{let v=Math.sin(x*123+y*456+s*789)*10000;return v-Math.floor(v);}
+  for(let o=0;o<nO;o++){
+    ctx.fillStyle='#0f172a';ctx.font='11px sans-serif';ctx.fillText(omics[o],8,30+o*ch+ch/2+4);
+    for(let f=0;f<nF;f++){
+      const r=rand(o,f);
+      let v=r;
+      if(f<3)v=Math.max(v,0.55+rand(o,f+99)*0.4); // shared factors
+      else if(f<6)v=o===(f-3)?(0.5+r*0.4):r*0.15; // omics-specific
+      else v=r*0.25;
+      const col=`rgba(14,116,144,${v.toFixed(2)})`;
+      ctx.fillStyle=col;ctx.fillRect(60+f*cw,18+o*ch,cw-2,ch-3);
+      if(o===0){ctx.fillStyle='#0f172a';ctx.font='10px sans-serif';ctx.fillText('F'+(f+1),60+f*cw+cw/2-8,12);}
+    }
+  }
+  ctx.fillStyle='#0f172a';ctx.font='11px sans-serif';ctx.fillText('Variance explained by factor × omics',w/2-100,h-8);
+}
+document.getElementById('mof').oninput=draw;window.addEventListener('resize',draw);setTimeout(draw,50);
+</script>
+</body></html>

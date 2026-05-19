@@ -1,0 +1,165 @@
+<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Ch 16: 空間 × 單細胞整合 — HTBA</title>
+<link rel="stylesheet" href="styles.css">
+</head><body>
+<nav class="top-nav"><div class="top-nav-inner">
+  <a href="index.html" class="top-nav-brand"><span>🧬</span> <span data-zh="高通量分析與整合" data-en="HTBA Tutorial">高通量分析與整合</span></a>
+  <ul class="top-nav-links"><li><a href="01-overview.html">01</a></li><li><a href="02-experimental-design.html">02</a></li><li><a href="03-upstream-pipeline.html">03</a></li><li><a href="04-genomics-variants.html">04</a></li><li><a href="05-structural-variants.html">05</a></li><li><a href="06-atac-cutrun.html">06</a></li><li><a href="07-dna-methylation.html">07</a></li><li><a href="08-bulk-rnaseq.html">08</a></li><li><a href="09-scrnaseq.html">09</a></li><li><a href="10-spatial-omics.html">10</a></li><li><a href="11-long-read-rna.html">11</a></li><li><a href="12-proteomics.html">12</a></li><li><a href="13-metabolomics.html">13</a></li><li><a href="14-batch-correction.html">14</a></li><li><a href="15-multiomics-integration.html">15</a></li><li><a href="16-spatial-singlecell.html" class="active">16</a></li><li><a href="17-functional-enrichment.html">17</a></li><li><a href="18-network-analysis.html">18</a></li><li><a href="19-foundation-models.html">19</a></li><li><a href="20-reproducibility.html">20</a></li>
+    <li><a href="references/index.html" data-zh="📚 參考資料" data-en="📚 References">📚 參考資料</a></li>
+  </ul>
+</div></nav>
+<div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
+
+<header class="page-hero"><div class="step-badge">CH 16 / 20 · BLOCK 5 INTEGRATION</div>
+<h1 data-zh="空間 × 單細胞整合" data-en="Spatial × Single-cell Integration">空間 × 單細胞整合</h1>
+<p class="subtitle" data-lang="zh">把 scRNA 的細胞型態地圖「回貼」到空間切片：Tangram、cell2location、SPOTlight、RCTD、Stereoscope、CellTrek。</p>
+<p class="subtitle" data-lang="en">Map scRNA cell-type labels back onto spatial sections: Tangram, cell2location, SPOTlight, RCTD, Stereoscope, CellTrek.</p>
+</header>
+
+<main class="content-wrap">
+
+<section class="section">
+<div class="section-label" data-zh="動機" data-en="MOTIVATION">動機</h2>
+<h2 data-zh="一、為什麼要整合空間與單細胞？" data-en="I. Why Integrate Spatial with Single-cell?">一、整合動機</h2>
+<div data-lang="zh"><p><strong>Visium / Stereo-seq spot</strong>（55 µm / 8-16 µm bin）覆蓋多個細胞，無法區分 cell type；而 scRNA-seq 有清楚細胞身份卻失去空間。整合兩者可獲得「<strong>空間化的細胞型態地圖</strong>」與「<strong>細胞型態解析的差異表達</strong>」。Xenium / MERSCOPE 雖達單細胞解析度，但只測 panel-level，需要與 scRNA 整合才能擴展到全轉錄組。</p></div>
+<div data-lang="en"><p><strong>Visium / Stereo-seq spots</strong> (55 µm / 8–16 µm bins) cover multiple cells with unknown identities; scRNA-seq has clear identities but no spatial context. Integration yields <strong>spatially resolved cell-type maps</strong> and <strong>cell-type-resolved DE in space</strong>. Xenium / MERSCOPE achieve single-cell resolution but only on panels — must integrate with scRNA for whole-transcriptome inference.</p></div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="工具" data-en="TOOLS">工具</h2>
+<h2 data-zh="二、Deconvolution 工具大全" data-en="II. Deconvolution Tool Compendium">二、Deconvolution 工具</h2>
+<table class="comp-table">
+<thead><tr><th>Tool</th><th data-zh="原理" data-en="Approach">原理</th><th data-zh="適用" data-en="Best for">適用</th><th data-zh="特性" data-en="Notes">特性</th></tr></thead>
+<tbody>
+<tr><td><strong>cell2location</strong></td><td data-zh="Bayesian NB regression" data-en="Bayesian NB regression">Bayesian</td><td>Visium / Stereo-seq</td><td data-zh="absolute cell number、不需 spot 細胞數先驗" data-en="Absolute cell counts, no spot-cell prior">推薦主流</td></tr>
+<tr><td><strong>RCTD</strong></td><td data-zh="Poisson + deconvolution" data-en="Poisson deconvolution">Poisson</td><td>Slide-seq / Visium</td><td data-zh="doublet-aware，少量細胞型態最佳" data-en="Doublet-aware; best for few cell types">doublet-aware</td></tr>
+<tr><td><strong>SPOTlight</strong></td><td>seeded NMF</td><td>Visium</td><td data-zh="R 簡單入門" data-en="Easy R entry point">R 入門</td></tr>
+<tr><td><strong>Stereoscope</strong></td><td>VAE + NB</td><td>Stereo-seq / Visium</td><td data-zh="深度學習、需 GPU" data-en="DL-based, GPU helpful">DL</td></tr>
+<tr><td><strong>Tangram</strong></td><td data-zh="alignment by gradient descent" data-en="Alignment by gradient descent">alignment</td><td>Visium / Xenium</td><td data-zh="直接把 sc 細胞「貼」到 spot；給細胞 identity" data-en="Maps sc cells directly to spots; assigns identities">cell-level mapping</td></tr>
+<tr><td><strong>CellTrek</strong></td><td data-zh="MERFISH-aware mapping" data-en="MERFISH-aware mapping">CCA + co-embedding</td><td>Xenium / MERSCOPE</td><td data-zh="reverse map：把 sc 投到空間座標" data-en="Reverse mapping: sc → spatial coords">reverse map</td></tr>
+<tr><td><strong>DestVI</strong></td><td>VAE</td><td>Visium</td><td data-zh="細胞內 sub-state 估計" data-en="Estimates within-cell-type substates">substate</td></tr>
+<tr><td><strong>CARD</strong></td><td data-zh="Conditional autoregressive" data-en="Conditional autoregressive">CAR</td><td>Visium</td><td data-zh="納入空間 autocorrelation" data-en="Incorporates spatial autocorrelation">空間 aware</td></tr>
+</tbody></table>
+<div class="callout tip"><span class="callout-icon">💡</span><div>
+<span data-lang="zh"><strong>2023-2024 benchmark：</strong>對於 Visium / Stereo-seq spot-level deconvolution，cell2location 與 RCTD 通常並列前段；想要 cell-level mapping（把 scRNA 細胞「指派」到 spot 內部）用 Tangram。</span>
+<span data-lang="en"><strong>2023-2024 benchmarks:</strong> cell2location and RCTD usually lead spot-level deconvolution on Visium / Stereo-seq; for cell-level mapping (assigning sc cells inside spots) use Tangram.</span>
+</div></div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="互動" data-en="INTERACTIVE">互動</h2>
+<h2 data-zh="三、Visium spot deconvolution 模擬" data-en="III. Visium Spot Deconvolution Sim">三、Spot deconvolution</h2>
+<div data-lang="zh"><p>每個 spot 是不同細胞型態的混合。深度學習方法（cell2location）vs. 線性方法（SPOTlight）vs. 直接 mapping（Tangram）行為不同。</p></div>
+<div data-lang="en"><p>Each spot is a cell-type mixture. DL methods (cell2location) vs. linear (SPOTlight) vs. direct mapping (Tangram) behave differently.</p></div>
+<div class="interactive-panel">
+<div class="sim-stats"><span class="sim-stat pass" id="dvAcc">Acc: —</span><span class="sim-stat warn" id="dvMethod">Method: —</span></div>
+<div class="slider-group"><label><span data-zh="細胞 / spot 數" data-en="Cells / spot">細胞/spot</span><span id="dvCv">8</span></label><input type="range" id="dvC" min="1" max="30" value="8" step="1"></div>
+<div class="slider-group"><label><span data-zh="細胞型態數" data-en="Number of cell types">細胞型態數</span><span id="dvKv">12</span></label><input type="range" id="dvK" min="3" max="40" value="12" step="1"></div>
+<div class="slider-group"><label><span data-zh="方法" data-en="Method">方法</span><span id="dvMv">cell2location</span></label><input type="range" id="dvM" min="0" max="2" value="0" step="1"></div>
+<div id="dvOut" style="margin-top:14px;font-size:.9rem;color:var(--c-ink-light);background:var(--c-surface-alt);padding:14px;border-radius:8px"></div>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="程式碼" data-en="CODE">程式碼</div>
+<h2 data-zh="四、cell2location + Tangram 實作" data-en="IV. cell2location + Tangram Code">四、實作</h2>
+<div class="code-tabs"><div class="code-tab-btns"><button class="code-tab-btn active" onclick="switchTab(this,'py1')">Python / cell2location</button><button class="code-tab-btn" onclick="switchTab(this,'py2')">Python / Tangram</button><button class="code-tab-btn" onclick="switchTab(this,'r1')">R / RCTD (spacexr)</button></div>
+<div class="code-tab-content active" id="py1"><pre><span class="comment"># cell2location — 兩階段</span>
+<span class="kw">import</span> cell2location
+<span class="kw">from</span> cell2location.models <span class="kw">import</span> RegressionModel, Cell2location
+
+<span class="comment"># 1. 從 scRNA 學 cell-type 參考</span>
+RegressionModel.<span class="func">setup_anndata</span>(adata_sc, batch_key=<span class="str">"sample"</span>, labels_key=<span class="str">"cell_type"</span>)
+ref = <span class="func">RegressionModel</span>(adata_sc); ref.<span class="func">train</span>(max_epochs=<span class="num">250</span>)
+inf_aver = ref.<span class="func">export_posterior</span>(adata_sc)[<span class="str">"means_per_cluster_mu_fg"</span>]
+
+<span class="comment"># 2. 在 Visium 上反算 abundance</span>
+Cell2location.<span class="func">setup_anndata</span>(adata_vis, batch_key=<span class="str">"sample"</span>)
+mod = <span class="func">Cell2location</span>(adata_vis, cell_state_df=inf_aver,
+                    N_cells_per_location=<span class="num">8</span>, detection_alpha=<span class="num">20</span>)
+mod.<span class="func">train</span>(max_epochs=<span class="num">30000</span>)
+adata_vis = mod.<span class="func">export_posterior</span>(adata_vis)</pre></div>
+<div class="code-tab-content" id="py2"><pre><span class="comment"># Tangram — 把 sc 細胞貼到 spatial 座標</span>
+<span class="kw">import</span> tangram <span class="kw">as</span> tg
+tg.<span class="func">pp_adatas</span>(adata_sc, adata_sp, genes=marker_genes)
+
+ad_map = tg.<span class="func">map_cells_to_space</span>(adata_sc, adata_sp,
+                                  mode=<span class="str">"cells"</span>, density_prior=<span class="str">"rna_count_based"</span>,
+                                  num_epochs=<span class="num">1000</span>, device=<span class="str">"cuda:0"</span>)
+
+<span class="comment"># 把 cell-type 投影到 spatial</span>
+tg.<span class="func">project_cell_annotations</span>(ad_map, adata_sp, annotation=<span class="str">"cell_type"</span>)
+tg.<span class="func">plot_cell_annotation_sc</span>(adata_sp, [<span class="str">"T cell"</span>,<span class="str">"B cell"</span>,<span class="str">"Macrophage"</span>],
+                              x=<span class="str">"x"</span>, y=<span class="str">"y"</span>, perc=<span class="num">0.02</span>)</pre></div>
+<div class="code-tab-content" id="r1"><pre><span class="comment"># RCTD (spacexr) — robust doublet-aware deconvolution</span>
+<span class="func">library</span>(spacexr); <span class="func">library</span>(Matrix)
+
+ref &lt;- <span class="func">Reference</span>(counts_sc, cell_types=sc_meta$ct,
+                 nUMI=<span class="func">colSums</span>(counts_sc))
+puck &lt;- <span class="func">SpatialRNA</span>(coords=sp_coords, counts=counts_sp,
+                   nUMI=<span class="func">colSums</span>(counts_sp))
+
+myRCTD &lt;- <span class="func">create.RCTD</span>(puck, ref, max_cores=<span class="num">8</span>)
+myRCTD &lt;- <span class="func">run.RCTD</span>(myRCTD, doublet_mode=<span class="str">"doublet"</span>)
+results &lt;- myRCTD@results$results_df
+<span class="func">head</span>(results)
+<span class="comment"># first_type / second_type / spot_class（singlet/doublet/reject）</span></pre></div>
+</div>
+</section>
+
+<section class="quiz-section">
+<h3>📝 <span data-zh="自我檢測" data-en="Self-Check">自我檢測</span></h3>
+<div class="quiz-q" data-answer="0" data-exp-zh="cell2location 以 Bayesian NB 給出絕對細胞數估計，在 Visium 主流 benchmark 都名列前茅。" data-exp-en="cell2location uses Bayesian NB and gives absolute cell-number estimates — a top performer in Visium benchmarks.">
+<p data-lang="zh">1. 想取得 Visium spot 內絕對細胞數估計，最常用的工具？</p>
+<p data-lang="en">1. To estimate absolute cell counts per Visium spot, the most common tool?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">cell2location</div><div class="quiz-opt" data-idx="1">DESeq2</div><div class="quiz-opt" data-idx="2">VEP</div><div class="quiz-opt" data-idx="3">scVI</div>
+</div><div class="quiz-feedback"></div></div>
+<div class="quiz-q" data-answer="2" data-exp-zh="Tangram 用 gradient descent 把 scRNA 個別細胞 alignment 到 spot 上，可給細胞層級 mapping。" data-exp-en="Tangram aligns individual sc cells to spots via gradient descent — provides cell-level mapping.">
+<p data-lang="zh">2. 想把 scRNA 細胞「指派」到 Visium spot 的工具？</p>
+<p data-lang="en">2. To "assign" scRNA cells to Visium spots?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">Bismark</div><div class="quiz-opt" data-idx="1">Bambu</div><div class="quiz-opt" data-idx="2">Tangram</div><div class="quiz-opt" data-idx="3">Mutect2</div>
+</div><div class="quiz-feedback"></div></div>
+<div class="quiz-q" data-answer="1" data-exp-zh="RCTD doublet mode 直接模型一個 spot 含 1 或 2 個 cell type，是 Slide-seq 經典選擇。" data-exp-en="RCTD doublet mode models a spot as 1 or 2 cell types — classic for Slide-seq.">
+<p data-lang="zh">3. doublet-aware spot deconvolution 適合的 R 工具？</p>
+<p data-lang="en">3. R tool for doublet-aware spot deconvolution?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">Seurat</div><div class="quiz-opt" data-idx="1">RCTD / spacexr</div><div class="quiz-opt" data-idx="2">limma</div><div class="quiz-opt" data-idx="3">ArchR</div>
+</div><div class="quiz-feedback"></div></div>
+</section>
+
+<nav class="page-nav">
+<a href="15-multiomics-integration.html"><span class="nav-dir" data-zh="← 上一章" data-en="← Prev">← 上一章</span><span class="nav-title" data-zh="Ch 15 · 多體學垂直整合" data-en="Ch 15 · Multi-Omics Vertical Integration">Ch 15 · 多體學垂直整合</span></a>
+<a href="17-functional-enrichment.html"><span class="nav-dir" data-zh="下一章 →" data-en="Next →">下一章 →</span><span class="nav-title" data-zh="Ch 17 · 功能富集與通路分析" data-en="Ch 17 · Functional Enrichment &amp; Pathway Analysis">Ch 17 · 功能富集與通路分析</span></a>
+</nav>
+</main>
+
+<footer class="site-footer">© Charlene — HTBA Interactive Tutorial</footer>
+<script src="i18n.js"></script>
+<script>
+window.addEventListener('scroll',()=>{const h=document.documentElement;document.getElementById('progressBar').style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100+'%';});
+function switchTab(b,id){const p=b.closest('.code-tabs');p.querySelectorAll('.code-tab-btn').forEach(x=>x.classList.remove('active'));p.querySelectorAll('.code-tab-content').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById(id).classList.add('active');}
+document.querySelectorAll('.quiz-q').forEach(q=>{const ans=+q.dataset.answer;q.querySelectorAll('.quiz-opt').forEach(o=>{o.onclick=()=>{if(q.dataset.done)return;q.dataset.done=1;const i=+o.dataset.idx,fb=q.querySelector('.quiz-feedback');q.querySelectorAll('.quiz-opt').forEach(x=>{if(+x.dataset.idx===ans)x.classList.add('correct');else if(+x.dataset.idx===i)x.classList.add('wrong');});if(i===ans){fb.className='quiz-feedback show correct-fb';fb.textContent='✓ '+(window.I18n&&window.I18n.get()==='en'?q.dataset.expEn:q.dataset.expZh);}else{fb.className='quiz-feedback show wrong-fb';fb.textContent='✗ '+(window.I18n&&window.I18n.get()==='en'?q.dataset.expEn:q.dataset.expZh);}};});});
+const methods=['cell2location','SPOTlight','Tangram'];
+function dvUpd(){
+  const c=+document.getElementById('dvC').value,k=+document.getElementById('dvK').value,m=+document.getElementById('dvM').value;
+  document.getElementById('dvCv').textContent=c;document.getElementById('dvKv').textContent=k;document.getElementById('dvMv').textContent=methods[m];
+  let baseAcc;
+  if(m===0)baseAcc=0.92-(k-3)/40*0.20-(c-4)/30*0.12;
+  else if(m===1)baseAcc=0.78-(k-3)/40*0.28-(c-4)/30*0.18;
+  else baseAcc=0.85-(k-3)/40*0.18-(c-4)/30*0.05;
+  baseAcc=Math.max(0.25,Math.min(0.96,baseAcc));
+  document.getElementById('dvAcc').textContent='Acc: '+(baseAcc*100).toFixed(0)+'%';
+  document.getElementById('dvMethod').textContent='Method: '+methods[m];
+  const en=(window.I18n&&window.I18n.get()==='en');
+  let note='';
+  if(m===0)note=en?'cell2location: Bayesian NB, robust across cell-types and density':'cell2location：Bayesian NB，跨細胞型態與密度都穩定';
+  else if(m===1)note=en?'SPOTlight: NMF-based, faster but sensitive to many cell types':'SPOTlight：基於 NMF，速度快但細胞型態多時較敏感';
+  else note=en?'Tangram: cell-level alignment, density-aware':'Tangram：細胞層級對齊，考慮密度';
+  document.getElementById('dvOut').textContent=note;
+}
+['dvC','dvK','dvM'].forEach(id=>document.getElementById(id).oninput=dvUpd);
+document.addEventListener('langchange',dvUpd);dvUpd();
+</script>
+</body></html>

@@ -1,0 +1,287 @@
+<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Ch 1: 高通量數據總覽 — HTBA Tutorial</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+</head><body>
+<nav class="top-nav"><div class="top-nav-inner">
+  <a href="index.html" class="top-nav-brand"><span>🧬</span> <span data-zh="高通量分析與整合" data-en="HTBA Tutorial">高通量分析與整合</span></a>
+  <ul class="top-nav-links">
+    <li><a href="01-overview.html" class="active">01</a></li><li><a href="02-experimental-design.html">02</a></li><li><a href="03-upstream-pipeline.html">03</a></li><li><a href="04-genomics-variants.html">04</a></li><li><a href="05-structural-variants.html">05</a></li><li><a href="06-atac-cutrun.html">06</a></li><li><a href="07-dna-methylation.html">07</a></li><li><a href="08-bulk-rnaseq.html">08</a></li><li><a href="09-scrnaseq.html">09</a></li><li><a href="10-spatial-omics.html">10</a></li><li><a href="11-long-read-rna.html">11</a></li><li><a href="12-proteomics.html">12</a></li><li><a href="13-metabolomics.html">13</a></li><li><a href="14-batch-correction.html">14</a></li><li><a href="15-multiomics-integration.html">15</a></li><li><a href="16-spatial-singlecell.html">16</a></li><li><a href="17-functional-enrichment.html">17</a></li><li><a href="18-network-analysis.html">18</a></li><li><a href="19-foundation-models.html">19</a></li><li><a href="20-reproducibility.html">20</a></li>
+    <li><a href="references/index.html" data-zh="📚 參考資料" data-en="📚 References">📚 參考資料</a></li>
+  </ul>
+</div></nav>
+<div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
+
+<header class="page-hero"><div class="step-badge">CH 1 / 20 · BLOCK 1 FOUNDATIONS</div>
+<h1 data-zh="高通量生物數據總覽" data-en="High-Throughput Biology Data: Overview">高通量生物數據總覽</h1>
+<p class="subtitle" data-lang="zh">從定序原理到五大組學版圖，認識公開資料庫與 FAIR 原則，為後續所有章節打下共通的詞彙與心智模型。</p>
+<p class="subtitle" data-lang="en">From sequencing principles to the five-omics landscape, with public repositories and FAIR — the shared vocabulary for everything that follows.</p>
+</header>
+
+<main class="content-wrap">
+
+<section class="section">
+<div class="section-label" data-zh="學習目標" data-en="OBJECTIVES">學習目標</div>
+<h2 data-zh="本章你會學到什麼" data-en="What you'll learn">本章你會學到什麼</h2>
+<div data-lang="zh"><ul><li>區分五大組學（genomics / epigenomics / transcriptomics / proteomics / metabolomics）的測量目標、儀器與資料形態。</li><li>理解短讀 (Illumina) vs. 長讀 (PacBio HiFi / ONT) 的核心 trade-off：長度、錯誤模式、通量、成本。</li><li>掌握 raw signal → FASTQ → BAM/CRAM → counts/peaks/MS feature 的通用資料流。</li><li>查得到並會引用主要公開資料庫：SRA、ENA、GEO、ArrayExpress、GTEx、TCGA、ENCODE、HCA、PRIDE、Metabolights。</li><li>能在自己的專案中套用 FAIR (Findable, Accessible, Interoperable, Reusable) 原則。</li></ul></div>
+<div data-lang="en"><ul><li>Distinguish the five omics layers — genomics, epigenomics, transcriptomics, proteomics, metabolomics — by measurement target, instrument, and data shape.</li><li>Understand the short-read (Illumina) vs. long-read (PacBio HiFi / ONT) trade-off: length, error mode, throughput, cost.</li><li>Trace the universal data flow: raw signal → FASTQ → BAM/CRAM → counts/peaks/MS-feature.</li><li>Find and cite the major public repositories: SRA, ENA, GEO, ArrayExpress, GTEx, TCGA, ENCODE, HCA, PRIDE, Metabolights.</li><li>Apply FAIR (Findable, Accessible, Interoperable, Reusable) to your own projects.</li></ul></div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="五大組學" data-en="FIVE OMICS">五大組學</div>
+<h2 data-zh="一、五大組學版圖" data-en="I. The Five-Omics Landscape">一、五大組學版圖</h2>
+<div data-lang="zh"><p>當代生醫研究通常將分子層級切成五大「組學」。每一層皆有對應的高通量量測技術，後續章節會逐一深入；現在先建立全景視野。</p></div>
+<div data-lang="en"><p>Modern biomedical research stratifies molecular biology into five "omics" layers. Each has its own high-throughput readout — later chapters dive in; here we build the panoramic view.</p></div>
+<div class="card-grid cols-3">
+<div class="card"><div class="card-icon">🧬</div><h4 data-zh="Genomics" data-en="Genomics">Genomics</h4>
+<div data-lang="zh"><p>DNA 序列本身。WGS / WES / 靶向定序 / 長讀組裝。產出：FASTQ → BAM → VCF（SNV / indel / SV / CNV）。</p></div>
+<div data-lang="en"><p>The DNA sequence itself. WGS / WES / targeted / long-read assembly. Output: FASTQ → BAM → VCF (SNV / indel / SV / CNV).</p></div>
+</div>
+<div class="card"><div class="card-icon">🪟</div><h4 data-zh="Epigenomics" data-en="Epigenomics">Epigenomics</h4>
+<div data-lang="zh"><p>染色質可及性、TF binding、組蛋白修飾、DNA 甲基化。ATAC-seq、ChIP-seq、CUT&amp;RUN、WGBS、EPIC array。產出：peaks、methylation β-values。</p></div>
+<div data-lang="en"><p>Chromatin accessibility, TF binding, histone marks, DNA methylation. ATAC-seq, ChIP-seq, CUT&RUN, WGBS, EPIC array. Output: peaks, methylation β-values.</p></div>
+</div>
+<div class="card"><div class="card-icon">📊</div><h4 data-zh="Transcriptomics" data-en="Transcriptomics">Transcriptomics</h4>
+<div data-lang="zh"><p>mRNA 量。Bulk / single-cell / spatial / long-read。產出：counts、UMI、splice junction、isoform。</p></div>
+<div data-lang="en"><p>mRNA abundance. Bulk / single-cell / spatial / long-read. Output: counts, UMI, splice junctions, isoforms.</p></div>
+</div>
+<div class="card"><div class="card-icon">🧪</div><h4 data-zh="Proteomics" data-en="Proteomics">Proteomics</h4>
+<div data-lang="zh"><p>蛋白質豐度與 PTM。LC-MS DDA / DIA、CITE-seq、Olink、SomaScan。產出：peptide → protein intensity、site-level PTM。</p></div>
+<div data-lang="en"><p>Protein abundance and PTMs. LC-MS DDA / DIA, CITE-seq, Olink, SomaScan. Output: peptide → protein intensities, site-level PTMs.</p></div>
+</div>
+<div class="card"><div class="card-icon">⚗️</div><h4 data-zh="Metabolomics" data-en="Metabolomics">Metabolomics</h4>
+<div data-lang="zh"><p>小分子代謝物。LC-MS / GC-MS / NMR、targeted vs. untargeted。產出：m/z–RT feature table，依賴譜庫鑑定。</p></div>
+<div data-lang="en"><p>Small-molecule metabolites. LC-MS / GC-MS / NMR, targeted vs. untargeted. Output: m/z–RT feature tables, library-dependent identification.</p></div>
+</div>
+<div class="card"><div class="card-icon">🦠</div><h4 data-zh="（延伸）Microbiome" data-en="(Bonus) Microbiome">（延伸）Microbiome</h4>
+<div data-lang="zh"><p>16S rRNA、shotgun metagenomics、metatranscriptomics。產出：ASV / OTU table、MAG。常與其他 omics 共同整合。</p></div>
+<div data-lang="en"><p>16S rRNA, shotgun metagenomics, metatranscriptomics. Output: ASV/OTU tables, MAGs. Often integrated with other omics.</p></div>
+</div>
+</div>
+<div class="callout tip"><span class="callout-icon">💡</span><div>
+<span data-lang="zh"><strong>核心原則：</strong>每個組學層只回答「分子層級的一面」，整合多層才能逼近完整的生物機制。Ch 14–18 將處理整合方法。</span>
+<span data-lang="en"><strong>Core principle:</strong> Each omics layer answers only one molecular facet — true mechanism emerges only with integration. Ch 14–18 covers integration methods.</span>
+</div></div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="定序原理" data-en="SEQUENCING">定序原理</div>
+<h2 data-zh="二、短讀 vs. 長讀定序：核心 trade-off" data-en="II. Short-read vs. Long-read: the Core Trade-off">二、短讀 vs. 長讀：核心 trade-off</h2>
+<table class="comp-table">
+<thead><tr>
+<th data-zh="特性" data-en="Property">特性</th>
+<th>Illumina (SBS)</th>
+<th>PacBio HiFi (CCS)</th>
+<th>Oxford Nanopore (ONT)</th>
+</tr></thead><tbody>
+<tr><td data-zh="讀長" data-en="Read length"><strong data-zh="讀長" data-en="Read length">讀長</strong></td><td>50–300 bp</td><td>10–25 kb</td><td data-zh="平均 10–100 kb，最長 &gt;4 Mb" data-en="10–100 kb avg, &gt;4 Mb max">10–100 kb（最長 &gt;4 Mb）</td></tr>
+<tr><td><strong data-zh="單鹼基準確度" data-en="Per-base accuracy">準確度</strong></td><td data-zh="&gt;99.9% (Q30)" data-en=">99.9% (Q30)">&gt;99.9%</td><td data-zh="&gt;99.9% (HiFi)" data-en=">99.9% (HiFi)">&gt;99.9% (HiFi)</td><td data-zh="~99% (R10.4.1)" data-en="~99% (R10.4.1)">~99%</td></tr>
+<tr><td><strong data-zh="錯誤模式" data-en="Error mode">錯誤模式</strong></td><td data-lang="zh">substitution 為主</td><td data-lang="zh">random，已被 HiFi 大幅壓低</td><td data-lang="zh">indel 為主（homopolymer）</td>
+<td data-lang="en">Substitution-biased</td><td data-lang="en">Random, largely reduced by HiFi</td><td data-lang="en">Indel-biased (homopolymers)</td></tr>
+<tr><td><strong data-zh="通量" data-en="Throughput">通量</strong></td><td>NovaSeq X 25 Tb/run</td><td>Revio 360 Gb/run</td><td>PromethION 14 Tb/run</td></tr>
+<tr><td><strong data-zh="強項" data-en="Strength">強項</strong></td><td data-lang="zh">高精度、低 cost/Gb、SNV、表達量化</td><td data-lang="zh">de novo 組裝、SV、phasing、全長 isoform</td><td data-lang="zh">即時 (real-time)、超長片段、direct RNA、modification</td>
+<td data-lang="en">Accuracy, low $/Gb, SNVs, expression quantification</td><td data-lang="en">De novo assembly, SVs, phasing, full-length isoforms</td><td data-lang="en">Real-time, ultra-long reads, direct RNA, base modifications</td></tr>
+</tbody></table>
+<div class="callout warn"><span class="callout-icon">⚠️</span><div>
+<span data-lang="zh"><strong>選型法則：</strong>表達量化、SNV 與目標重定序選 Illumina；新基因組組裝、結構變異與全長 isoform 選 HiFi；超長片段、即時診斷與 m6A/CpG 同步偵測選 ONT。</span>
+<span data-lang="en"><strong>Selection rule:</strong> Use Illumina for quantification / SNV / re-sequencing; HiFi for de novo assembly, SV, and full-length isoforms; ONT for ultra-long reads, real-time diagnostics, and joint m6A/CpG detection.</span>
+</div></div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="通用資料流" data-en="DATA FLOW">通用資料流</div>
+<h2 data-zh="三、所有組學共通的資料流" data-en="III. The Universal Data Flow">三、所有組學共通的資料流</h2>
+<div class="workflow">
+<div class="workflow-step" data-step="1"><h4 data-zh="原始訊號 / Raw signal" data-en="Raw signal">原始訊號 / Raw signal</h4>
+<p data-lang="zh">儀器層級的影像 / 電流：Illumina .bcl、PacBio .subreads.bam、ONT POD5、MS .raw / .mzML。多半透過原廠軟體交付。</p>
+<p data-lang="en">Instrument-level images / current: Illumina .bcl, PacBio .subreads.bam, ONT POD5, MS .raw / .mzML. Usually handled by vendor software.</p>
+</div>
+<div class="workflow-step" data-step="2"><h4>FASTQ / spectra</h4>
+<p data-lang="zh">序列文字 + 品質分數（Q-score）。MS 領域對應 mzML / mzXML。第一個 QC 點：FastQC、MultiQC、msstats QC。</p>
+<p data-lang="en">Sequence text + quality (Q-score). MS analog: mzML / mzXML. First QC point: FastQC, MultiQC, msstats QC.</p>
+</div>
+<div class="workflow-step" data-step="3"><h4 data-zh="比對 / 鑑定" data-en="Alignment / identification">比對 / 鑑定</h4>
+<p data-lang="zh">DNA/RNA → BAM/CRAM (bwa-mem2, STAR, minimap2)；MS → identified PSM (MSFragger, Comet)。</p>
+<p data-lang="en">DNA/RNA → BAM/CRAM (bwa-mem2, STAR, minimap2); MS → identified PSMs (MSFragger, Comet).</p>
+</div>
+<div class="workflow-step" data-step="4"><h4 data-zh="量化結果 / Quantification" data-en="Quantification">量化結果 / Quantification</h4>
+<p data-lang="zh">VCF (variants)、count matrix (RNA)、peak BED (ATAC/ChIP)、β-value matrix (Methyl)、intensity matrix (Proteomics/Metabolomics)。<strong>這是統計分析的真正起點。</strong></p>
+<p data-lang="en">VCF (variants), count matrix (RNA), peak BED (ATAC/ChIP), β-value matrix (Methyl), intensity matrix (Proteomics/Metabolomics). <strong>This is where statistical analysis actually begins.</strong></p>
+</div>
+<div class="workflow-step" data-step="5"><h4 data-zh="生物學詮釋" data-en="Biological interpretation">生物學詮釋</h4>
+<p data-lang="zh">DE 基因 / DMR / DAR、enrichment、pathway crosstalk、cell-cell communication、knowledge graph。Ch 17–18 詳述。</p>
+<p data-lang="en">DE genes / DMRs / DARs, enrichment, pathway crosstalk, cell–cell communication, knowledge graphs. Detailed in Ch 17–18.</p>
+</div>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="互動模擬" data-en="INTERACTIVE">互動模擬</div>
+<h2 data-zh="四、定序通量 × 樣本數的成本模擬" data-en="IV. Throughput × Sample-size Cost Simulator">四、定序通量 × 樣本數的成本模擬</h2>
+<div data-lang="zh"><p>調整每樣本目標 reads、樣本數、定序平台，估算需要幾個 run 與 USD 成本。實際定價依供應商與服務模式而異，此處為示意。</p></div>
+<div data-lang="en"><p>Adjust per-sample reads, sample count, and platform to estimate required runs and USD cost. Real pricing varies by vendor and service tier — this is illustrative.</p></div>
+<div class="interactive-panel">
+<div class="sim-stats"><span class="sim-stat pass" id="statRuns">—</span><span class="sim-stat warn" id="statCost">—</span><span class="sim-stat" id="statTime">—</span></div>
+<div class="slider-group"><label><span data-zh="樣本數" data-en="Samples">樣本數</span><span id="valN">24</span></label><input type="range" id="sN" min="4" max="500" value="24" step="4"></div>
+<div class="slider-group"><label><span data-zh="每樣本目標 reads (百萬)" data-en="Reads / sample (M)">每樣本 reads (M)</span><span id="valR">30</span></label><input type="range" id="sR" min="5" max="200" value="30" step="5"></div>
+<div class="slider-group"><label><span data-zh="平台" data-en="Platform">平台</span><span id="valP">NovaSeq X 25B</span></label><input type="range" id="sP" min="0" max="3" value="0" step="1"></div>
+<div class="chart-container"><canvas id="costChart"></canvas></div>
+<p style="font-size:.8rem;color:var(--c-ink-muted);text-align:center;" data-zh="X：平台 | Y：總成本 (USD) — 顏色：是否一次 run 完成" data-en="X: platform | Y: total cost (USD) — color: single run vs. multi-run">X：平台 | Y：總成本（USD）</p>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="公開資料庫" data-en="REPOSITORIES">公開資料庫</div>
+<h2 data-zh="五、必須認識的公開資料庫" data-en="V. Public Repositories You Must Know">五、必須認識的公開資料庫</h2>
+<div class="card-grid cols-2">
+<div class="card"><h4>🌐 <span data-zh="通用定序資料" data-en="Generic sequencing">通用定序資料</span></h4>
+<div data-lang="zh"><p><strong>SRA</strong> (NCBI)、<strong>ENA</strong> (EBI)、<strong>DDBJ</strong>：原始 FASTQ；三者每日鏡像同步。<br><strong>GEO / ArrayExpress</strong>：含 metadata 的 series-level 表達資料。<br>下載：<code>sra-toolkit</code>、<code>ffq</code>、<code>nf-core/fetchngs</code>。</p></div>
+<div data-lang="en"><p><strong>SRA</strong> (NCBI), <strong>ENA</strong> (EBI), <strong>DDBJ</strong>: raw FASTQ; the three sync daily.<br><strong>GEO / ArrayExpress</strong>: series-level expression with metadata.<br>Download via <code>sra-toolkit</code>, <code>ffq</code>, <code>nf-core/fetchngs</code>.</p></div>
+</div>
+<div class="card"><h4>🏥 <span data-zh="臨床 / 大型 cohort" data-en="Clinical / large cohorts">臨床 / 大型 cohort</span></h4>
+<div data-lang="zh"><p><strong>TCGA / PCAWG / GENIE</strong>（癌症）、<strong>GTEx</strong>（正常組織 RNA-seq）、<strong>UK Biobank / All of Us</strong>（族群基因組）、<strong>dbGaP / EGA</strong>（受控存取）。商業使用需查 DUA。</p></div>
+<div data-lang="en"><p><strong>TCGA / PCAWG / GENIE</strong> (cancer), <strong>GTEx</strong> (normal-tissue RNA-seq), <strong>UK Biobank / All of Us</strong> (population genomics), <strong>dbGaP / EGA</strong> (controlled access). Check DUA for commercial use.</p></div>
+</div>
+<div class="card"><h4>🔬 <span data-zh="專題資料庫" data-en="Domain repositories">專題資料庫</span></h4>
+<div data-lang="zh"><p><strong>ENCODE / Roadmap Epigenomics</strong>：表觀。<br><strong>HCA / CELLxGENE / Tabula Sapiens</strong>：scRNA。<br><strong>PRIDE / MassIVE</strong>：蛋白質。<br><strong>Metabolights / MetabolomicsWorkbench</strong>：代謝體。<br><strong>AlphaFold DB</strong>：預測結構。</p></div>
+<div data-lang="en"><p><strong>ENCODE / Roadmap Epigenomics</strong>: epigenetics.<br><strong>HCA / CELLxGENE / Tabula Sapiens</strong>: scRNA.<br><strong>PRIDE / MassIVE</strong>: proteomics.<br><strong>Metabolights / MetabolomicsWorkbench</strong>: metabolomics.<br><strong>AlphaFold DB</strong>: predicted structures.</p></div>
+</div>
+<div class="card"><h4>📑 <span data-zh="知識與參考" data-en="Knowledge & reference">知識與參考</span></h4>
+<div data-lang="zh"><p><strong>Ensembl / GENCODE</strong>：基因模型。<br><strong>UniProt</strong>：蛋白質。<br><strong>gnomAD / ClinVar / OMIM</strong>：變異族群頻率與臨床顯著性。<br><strong>Reactome / KEGG / WikiPathways / MSigDB</strong>：通路與 gene sets。</p></div>
+<div data-lang="en"><p><strong>Ensembl / GENCODE</strong>: gene models.<br><strong>UniProt</strong>: proteins.<br><strong>gnomAD / ClinVar / OMIM</strong>: population frequencies and clinical significance.<br><strong>Reactome / KEGG / WikiPathways / MSigDB</strong>: pathways and gene sets.</p></div>
+</div>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="FAIR" data-en="FAIR">FAIR</div>
+<h2 data-zh="六、FAIR 原則 — 讓資料能被重複使用" data-en="VI. FAIR Principles — Make Data Reusable">六、FAIR 原則</h2>
+<div class="decision-tree">
+<h4>🌳 FAIR = Findable · Accessible · Interoperable · Reusable</h4>
+<div data-lang="zh">
+<div class="dt-node"><span class="dt-q">F</span><div><strong>Findable：</strong>給資料一個全球唯一的 DOI / accession（如 GSE12345），加上豐富的 metadata，並登錄索引（GEO、ENA、Zenodo）。</div></div>
+<div class="dt-node"><span class="dt-q">A</span><div><strong>Accessible：</strong>用標準協定取得（HTTPS、SFTP、AWS S3），即使原始資料 retire 也保留 metadata。受控存取請使用 dbGaP / EGA。</div></div>
+<div class="dt-node"><span class="dt-q">I</span><div><strong>Interoperable：</strong>用社群標準格式（FASTQ、CRAM、VCF、mzML、AnnData h5ad）與標準字彙（HPO、MeSH、UBERON、SNOMED-CT、EFO）。</div></div>
+<div class="dt-node"><span class="dt-q">R</span><div><strong>Reusable：</strong>明確授權（CC BY、CC0、控管存取）、處理流程版本化（git + Snakemake/Nextflow）、容器化（Docker / Singularity）。</div></div>
+</div>
+<div data-lang="en">
+<div class="dt-node"><span class="dt-q">F</span><div><strong>Findable:</strong> Give each dataset a globally unique DOI / accession (e.g., GSE12345), rich metadata, and register it in an index (GEO, ENA, Zenodo).</div></div>
+<div class="dt-node"><span class="dt-q">A</span><div><strong>Accessible:</strong> Retrieve via standard protocols (HTTPS, SFTP, AWS S3); keep metadata even if raw data is retired. Use dbGaP / EGA for controlled access.</div></div>
+<div class="dt-node"><span class="dt-q">I</span><div><strong>Interoperable:</strong> Use community-standard formats (FASTQ, CRAM, VCF, mzML, AnnData h5ad) and vocabularies (HPO, MeSH, UBERON, SNOMED-CT, EFO).</div></div>
+<div class="dt-node"><span class="dt-q">R</span><div><strong>Reusable:</strong> Explicit license (CC BY, CC0, controlled), version-controlled pipelines (git + Snakemake/Nextflow), containerized (Docker / Singularity).</div></div>
+</div>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="程式碼" data-en="CODE">程式碼</div>
+<h2 data-zh="七、從公開資料庫下載資料（實作）" data-en="VII. Downloading Data from Public Repositories">七、從公開資料庫下載資料</h2>
+<div class="code-tabs"><div class="code-tab-btns"><button class="code-tab-btn active" onclick="switchTab(this,'r1')">R / GEOquery</button><button class="code-tab-btn" onclick="switchTab(this,'py1')">Python / ffq</button><button class="code-tab-btn" onclick="switchTab(this,'sh1')">Shell / sra-toolkit</button></div>
+<div class="code-tab-content active" id="r1"><pre><span class="comment"># R：下載 GEO series + soft 檔 / Download GEO series + SOFT</span>
+<span class="kw">if</span> (!<span class="func">requireNamespace</span>(<span class="str">"BiocManager"</span>, quietly=<span class="kw">TRUE</span>)) <span class="func">install.packages</span>(<span class="str">"BiocManager"</span>)
+BiocManager::<span class="func">install</span>(<span class="func">c</span>(<span class="str">"GEOquery"</span>, <span class="str">"SummarizedExperiment"</span>))
+<span class="func">library</span>(GEOquery)
+
+gse &lt;- <span class="func">getGEO</span>(<span class="str">"GSE183947"</span>, GSEMatrix = <span class="kw">TRUE</span>)[[<span class="num">1</span>]]
+<span class="func">pData</span>(gse) |&gt; <span class="func">head</span>()       <span class="comment"># 樣本 metadata</span>
+<span class="func">exprs</span>(gse) |&gt; <span class="func">dim</span>()        <span class="comment"># 表達矩陣</span>
+
+<span class="comment"># 直接抓 supplementary 原始 counts</span>
+<span class="func">getGEOSuppFiles</span>(<span class="str">"GSE183947"</span>, baseDir = <span class="str">"./data"</span>)</pre></div>
+<div class="code-tab-content" id="py1"><pre><span class="comment"># Python：用 ffq 取得跨資料庫元資料 → 用 prefetch 下載</span>
+<span class="comment"># pip install ffq</span>
+<span class="kw">import</span> json, subprocess
+
+meta = subprocess.<span class="func">check_output</span>([<span class="str">"ffq"</span>, <span class="str">"GSE183947"</span>])
+meta = json.<span class="func">loads</span>(meta)
+<span class="func">print</span>(meta[<span class="str">"GSE183947"</span>][<span class="str">"samples"</span>].<span class="func">keys</span>())
+
+<span class="comment"># 取 SRR 列表後再用 sra-toolkit 下載</span>
+srrs = [s[<span class="str">"runs"</span>] <span class="kw">for</span> s <span class="kw">in</span> meta[<span class="str">"GSE183947"</span>][<span class="str">"samples"</span>].<span class="func">values</span>()]
+
+<span class="comment"># 進階：HCA / CELLxGENE 用 cellxgene-census 直接讀取</span>
+<span class="kw">import</span> cellxgene_census
+<span class="kw">with</span> cellxgene_census.<span class="func">open_soma</span>() <span class="kw">as</span> census:
+    adata = cellxgene_census.<span class="func">get_anndata</span>(
+        census, organism=<span class="str">"Homo sapiens"</span>,
+        obs_value_filter=<span class="str">"tissue == 'lung' and disease == 'normal'"</span>)
+<span class="func">print</span>(adata.shape)</pre></div>
+<div class="code-tab-content" id="sh1"><pre><span class="comment"># Shell：使用 sra-toolkit + pigz 平行解壓</span>
+<span class="comment"># conda install -c bioconda sra-tools pigz</span>
+<span class="func">prefetch</span> SRR15852396                            <span class="comment"># 下載 .sra</span>
+<span class="func">fasterq-dump</span> --split-files --threads 8 SRR15852396   <span class="comment"># 轉 FASTQ</span>
+<span class="func">pigz</span> -p 8 SRR15852396_*.fastq                  <span class="comment"># 平行壓縮</span>
+
+<span class="comment"># 更現代的選擇：nf-core/fetchngs（自動處理 metadata 與 md5）</span>
+<span class="func">nextflow</span> run nf-core/fetchngs -profile docker \
+    --input ids.csv --outdir results/</pre></div>
+</div>
+</section>
+
+<section class="quiz-section">
+<h3>📝 <span data-zh="自我檢測" data-en="Self-Check">自我檢測</span></h3>
+<div class="quiz-q" data-answer="2" data-exp-zh="HiFi 結合長讀長與 &gt;99.9% 準確度，是 de novo 組裝與 SV 偵測的首選。" data-exp-en="HiFi combines long reads with >99.9% accuracy — the go-to for de novo assembly and SV detection.">
+<p data-lang="zh">1. 想對一個尚未組裝的非模式生物做高品質 de novo 組裝，最佳選擇？</p>
+<p data-lang="en">1. For high-quality de novo assembly of a non-model organism, the best choice?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0"><span data-lang="zh">A. Illumina NovaSeq 短讀</span><span data-lang="en">A. Illumina NovaSeq short reads</span></div>
+<div class="quiz-opt" data-idx="1"><span data-lang="zh">B. EPIC methylation array</span><span data-lang="en">B. EPIC methylation array</span></div>
+<div class="quiz-opt" data-idx="2"><span data-lang="zh">C. PacBio HiFi (CCS)</span><span data-lang="en">C. PacBio HiFi (CCS)</span></div>
+<div class="quiz-opt" data-idx="3"><span data-lang="zh">D. Sanger 定序</span><span data-lang="en">D. Sanger sequencing</span></div>
+</div><div class="quiz-feedback"></div></div>
+<div class="quiz-q" data-answer="1" data-exp-zh="FAIR 的 I 指 Interoperable — 用社群標準格式與字彙，使資料可跨工具流通。" data-exp-en="The I in FAIR is Interoperable — community-standard formats and vocabularies for cross-tool flow.">
+<p data-lang="zh">2. FAIR 原則中的「I」代表？</p>
+<p data-lang="en">2. The "I" in FAIR principles stands for?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0"><span data-lang="zh">A. Indexed</span><span data-lang="en">A. Indexed</span></div>
+<div class="quiz-opt" data-idx="1"><span data-lang="zh">B. Interoperable</span><span data-lang="en">B. Interoperable</span></div>
+<div class="quiz-opt" data-idx="2"><span data-lang="zh">C. Integrated</span><span data-lang="en">C. Integrated</span></div>
+<div class="quiz-opt" data-idx="3"><span data-lang="zh">D. Inferable</span><span data-lang="en">D. Inferable</span></div>
+</div><div class="quiz-feedback"></div></div>
+<div class="quiz-q" data-answer="2" data-exp-zh="PRIDE 是 EBI 維護的蛋白質體 MS 資料庫；其他選項分屬 RNA-seq、變異與代謝體。" data-exp-en="PRIDE is EBI's proteomics MS repository; the others belong to RNA-seq, variants, and metabolomics.">
+<p data-lang="zh">3. 想下載 mass spectrometry 蛋白質體公開資料，最常用的資料庫是？</p>
+<p data-lang="en">3. To download public mass-spec proteomics data, the most common repository is?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0"><span data-lang="zh">A. GEO</span><span data-lang="en">A. GEO</span></div>
+<div class="quiz-opt" data-idx="1"><span data-lang="zh">B. gnomAD</span><span data-lang="en">B. gnomAD</span></div>
+<div class="quiz-opt" data-idx="2"><span data-lang="zh">C. PRIDE</span><span data-lang="en">C. PRIDE</span></div>
+<div class="quiz-opt" data-idx="3"><span data-lang="zh">D. Metabolights</span><span data-lang="en">D. Metabolights</span></div>
+</div><div class="quiz-feedback"></div></div>
+</section>
+
+<nav class="page-nav"><div class="placeholder"></div>
+<a href="02-experimental-design.html"><span class="nav-dir" data-zh="下一章 →" data-en="Next →">下一章 →</span><span class="nav-title" data-zh="Ch 2 · 實驗設計與功率分析" data-en="Ch 2 · Experimental Design &amp; Power Analysis">Ch 2 · 實驗設計與功率分析</span></a>
+</nav>
+</main>
+
+<footer class="site-footer">© Charlene — HTBA Interactive Tutorial</footer>
+<script src="i18n.js"></script>
+<script>
+window.addEventListener('scroll',()=>{const h=document.documentElement;document.getElementById('progressBar').style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100+'%';});
+function switchTab(b,id){const p=b.closest('.code-tabs');p.querySelectorAll('.code-tab-btn').forEach(x=>x.classList.remove('active'));p.querySelectorAll('.code-tab-content').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById(id).classList.add('active');}
+document.querySelectorAll('.quiz-q').forEach(q=>{const ans=+q.dataset.answer;q.querySelectorAll('.quiz-opt').forEach(o=>{o.onclick=()=>{if(q.dataset.done)return;q.dataset.done=1;const i=+o.dataset.idx,fb=q.querySelector('.quiz-feedback');q.querySelectorAll('.quiz-opt').forEach(x=>{if(+x.dataset.idx===ans)x.classList.add('correct');else if(+x.dataset.idx===i)x.classList.add('wrong');});if(i===ans){fb.className='quiz-feedback show correct-fb';fb.textContent='✓ '+(window.I18n&&window.I18n.get()==='en'?q.dataset.expEn:q.dataset.expZh);}else{fb.className='quiz-feedback show wrong-fb';fb.textContent='✗ '+(window.I18n&&window.I18n.get()==='en'?q.dataset.expEn:q.dataset.expZh);}};});});
+
+// Cost sim chart
+const platforms=[{name:'NovaSeq X 25B',gb:1200,cost:18000,hours:48},{name:'NovaSeq 6000 S4',gb:600,cost:14000,hours:44},{name:'NextSeq 2000 P3',gb:120,cost:5500,hours:30},{name:'Revio HiFi',gb:90,cost:9500,hours:24}];
+const ctx=document.getElementById('costChart').getContext('2d');
+const chart=new Chart(ctx,{type:'bar',data:{labels:platforms.map(p=>p.name),datasets:[{label:'USD',data:[0,0,0,0],backgroundColor:['#0e7490','#155e75','#0891b2','#f97316']}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,title:{display:true,text:'Cost (USD)'}}}}});
+function upd(){
+  const n=+document.getElementById('sN').value;
+  const r=+document.getElementById('sR').value;
+  const p=+document.getElementById('sP').value;
+  document.getElementById('valN').textContent=n;
+  document.getElementById('valR').textContent=r;
+  document.getElementById('valP').textContent=platforms[p].name;
+  const totalGB=n*r*0.15; // assume 150bp PE
+  const data=platforms.map(pl=>{const runs=Math.ceil(totalGB/pl.gb);return runs*pl.cost;});
+  chart.data.datasets[0].data=data;
+  chart.update();
+  const cur=platforms[p];const runs=Math.ceil(totalGB/cur.gb);const totalCost=runs*cur.cost;
+  document.getElementById('statRuns').textContent=(window.I18n&&window.I18n.get()==='en'?'Runs: ':'需要 ')+runs;
+  document.getElementById('statCost').textContent='≈ $'+totalCost.toLocaleString()+' USD';
+  document.getElementById('statTime').textContent=(runs*cur.hours)+(window.I18n&&window.I18n.get()==='en'?' h':' 小時');
+}
+['sN','sR','sP'].forEach(id=>document.getElementById(id).oninput=upd);
+document.addEventListener('langchange',upd);upd();
+</script>
+</body></html>

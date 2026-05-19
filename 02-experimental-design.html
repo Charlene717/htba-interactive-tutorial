@@ -1,0 +1,226 @@
+<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Ch 2: 實驗設計與功率分析 — HTBA Tutorial</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+</head><body>
+<nav class="top-nav"><div class="top-nav-inner">
+  <a href="index.html" class="top-nav-brand"><span>🧬</span> <span data-zh="高通量分析與整合" data-en="HTBA Tutorial">高通量分析與整合</span></a>
+  <ul class="top-nav-links">
+    <li><a href="01-overview.html">01</a></li><li><a href="02-experimental-design.html" class="active">02</a></li><li><a href="03-upstream-pipeline.html">03</a></li><li><a href="04-genomics-variants.html">04</a></li><li><a href="05-structural-variants.html">05</a></li><li><a href="06-atac-cutrun.html">06</a></li><li><a href="07-dna-methylation.html">07</a></li><li><a href="08-bulk-rnaseq.html">08</a></li><li><a href="09-scrnaseq.html">09</a></li><li><a href="10-spatial-omics.html">10</a></li><li><a href="11-long-read-rna.html">11</a></li><li><a href="12-proteomics.html">12</a></li><li><a href="13-metabolomics.html">13</a></li><li><a href="14-batch-correction.html">14</a></li><li><a href="15-multiomics-integration.html">15</a></li><li><a href="16-spatial-singlecell.html">16</a></li><li><a href="17-functional-enrichment.html">17</a></li><li><a href="18-network-analysis.html">18</a></li><li><a href="19-foundation-models.html">19</a></li><li><a href="20-reproducibility.html">20</a></li>
+    <li><a href="references/index.html" data-zh="📚 參考資料" data-en="📚 References">📚 參考資料</a></li>
+  </ul>
+</div></nav>
+<div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
+
+<header class="page-hero"><div class="step-badge">CH 2 / 20 · BLOCK 1 FOUNDATIONS</div>
+<h1 data-zh="實驗設計與功率分析" data-en="Experimental Design & Power Analysis">實驗設計與功率分析</h1>
+<p class="subtitle" data-lang="zh">差的設計再強的統計也救不回來。本章涵蓋生物 vs. 技術重複、隨機化、blocking、batch confounding 與多種組學的樣本數估算。</p>
+<p class="subtitle" data-lang="en">No statistics can rescue a bad design. We cover biological vs. technical replicates, randomization, blocking, batch confounding, and sample-size estimation for multiple omics.</p>
+</header>
+
+<main class="content-wrap">
+
+<section class="section">
+<div class="section-label" data-zh="核心區分" data-en="CORE DISTINCTION">核心區分</div>
+<h2 data-zh="一、生物重複 vs. 技術重複" data-en="I. Biological vs. Technical Replicates">一、生物重複 vs. 技術重複</h2>
+<div class="card-grid cols-2">
+<div class="card"><h4>🧬 <span data-zh="生物重複 (Biological replicates)" data-en="Biological replicates">生物重複</span></h4>
+<div data-lang="zh"><p>來自<strong>不同個體 / 不同生物樣本</strong>的測量。捕捉真正的群體變異，是統計推論的基礎。少於 3 個 biological replicates 幾乎沒辦法做 DE 分析。</p></div>
+<div data-lang="en"><p>Measurements from <strong>different individuals / biological specimens</strong>. Capture true population variation — the foundation of statistical inference. Fewer than 3 biological replicates makes DE analysis essentially impossible.</p></div>
+</div>
+<div class="card"><h4>⚙️ <span data-zh="技術重複 (Technical replicates)" data-en="Technical replicates">技術重複</span></h4>
+<div data-lang="zh"><p>同一樣本重新走流程（同一管 RNA 重複 library prep / sequencing）。只反映儀器與流程的雜訊，<strong>不能</strong>取代生物重複。現代 NGS 技術雜訊已很低，多數情況可省略。</p></div>
+<div data-lang="en"><p>Same sample re-run through the pipeline (same RNA tube, repeat library prep / sequencing). Captures only instrument/pipeline noise — <strong>cannot</strong> replace biological replicates. Modern NGS technical noise is low; often skippable.</p></div>
+</div>
+</div>
+<div class="callout danger"><span class="callout-icon">⛔</span><div>
+<span data-lang="zh"><strong>常見錯誤：</strong>把同一個 mouse 的肝臟切成 3 塊送 RNA-seq，當作 n=3。這是「pseudoreplicates」，n 仍然 = 1，p-value 是假的。Hurlbert (1984) 已指出這類設計的問題。</span>
+<span data-lang="en"><strong>Common mistake:</strong> Splitting one mouse liver into 3 pieces for RNA-seq and calling it n=3. These are <em>pseudoreplicates</em> — n is still 1, and p-values are inflated. Hurlbert (1984) called this out.</span>
+</div></div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="批次效應" data-en="BATCH EFFECTS">批次效應</div>
+<h2 data-zh="二、批次混淆 (Batch confounding)" data-en="II. Batch Confounding">二、批次混淆</h2>
+<div data-lang="zh"><p>如果所有「對照組」在週一定序、所有「實驗組」在週二定序，就<strong>無法區分</strong>條件效應與批次效應 — 任何下游 batch correction（Ch 14）都救不回來。預防勝於補救。</p></div>
+<div data-lang="en"><p>If all "controls" are sequenced on Monday and all "treated" on Tuesday, you <strong>cannot</strong> separate condition from batch — no downstream batch correction (Ch 14) will save you. Prevention beats remediation.</p></div>
+<div class="card-grid cols-3">
+<div class="card"><h4>❌ <span data-zh="混淆設計 (Confounded)" data-en="Confounded design">混淆設計</span></h4>
+<p data-lang="zh">Plate 1：全部 control；Plate 2：全部 treated。</p>
+<p data-lang="en">Plate 1: all controls; Plate 2: all treated.</p></div>
+<div class="card"><h4>⚖️ <span data-zh="平衡設計 (Balanced)" data-en="Balanced design">平衡設計</span></h4>
+<p data-lang="zh">每個 plate / 跑次都各放一半 control 一半 treated；統計上可分離批次效應。</p>
+<p data-lang="en">Each plate / run has half controls and half treated — statistically separable from batch.</p></div>
+<div class="card"><h4>✅ <span data-zh="隨機 + Block" data-en="Randomized + blocked">隨機 + Block</span></h4>
+<p data-lang="zh">在每個 block (plate/lane) 內以隨機順序放入條件，並於模型中納入 block term。<strong>金標準。</strong></p>
+<p data-lang="en">Within each block (plate/lane) randomize condition order; include block as a model term. <strong>Gold standard.</strong></p></div>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="互動模擬" data-en="INTERACTIVE">互動模擬</div>
+<h2 data-zh="三、樣本數 × 效應量 × 功率模擬器" data-en="III. Sample-size × Effect-size × Power Simulator">三、功率計算模擬器</h2>
+<div data-lang="zh"><p>調整生物變異 (CV)、最小可偵測 log2 fold-change、樣本數 (n/group)，估計 80% 功率下能偵測到的 DE 基因比例（簡化模擬，僅供概念）。</p></div>
+<div data-lang="en"><p>Adjust biological CV, minimum detectable log2 fold-change, and n/group to estimate the fraction of DE genes detectable at 80% power (simplified illustrative model).</p></div>
+<div class="interactive-panel">
+<div class="sim-stats"><span class="sim-stat pass" id="statPow">Power: —</span><span class="sim-stat warn" id="statN">n/group: —</span></div>
+<div class="slider-group"><label><span data-zh="每組樣本數 n" data-en="n per group">n/group</span><span id="valN2">5</span></label><input type="range" id="sN2" min="2" max="50" value="5" step="1"></div>
+<div class="slider-group"><label><span data-zh="生物 CV (%)" data-en="Biological CV (%)">CV (%)</span><span id="valC2">40</span></label><input type="range" id="sC2" min="10" max="100" value="40" step="5"></div>
+<div class="slider-group"><label><span data-zh="最小 log2 FC" data-en="Min log2 FC">最小 log2FC</span><span id="valF2">1.0</span></label><input type="range" id="sF2" min="0.3" max="3" value="1.0" step="0.1"></div>
+<div class="chart-container"><canvas id="powChart"></canvas></div>
+<p style="font-size:.8rem;color:var(--c-ink-muted);text-align:center;" data-zh="X：每組樣本數 | Y：偵測 power" data-en="X: n/group | Y: detection power">X：n/group | Y：power</p>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="樣本數建議" data-en="RULES OF THUMB">樣本數建議</div>
+<h2 data-zh="四、各組學樣本數經驗法則" data-en="IV. Sample-size Rules of Thumb by Omics">四、各組學樣本數經驗法則</h2>
+<table class="comp-table">
+<thead><tr><th data-zh="技術" data-en="Technology">技術</th><th data-zh="最少 n/group" data-en="Min n/group">最少 n/group</th><th data-zh="推薦 n/group" data-en="Recommended">推薦</th><th data-zh="主要變異來源" data-en="Main variance">變異來源</th></tr></thead>
+<tbody>
+<tr><td>Bulk RNA-seq</td><td>3</td><td>6–10</td><td data-zh="個體間生物變異" data-en="Inter-individual biology">個體生物變異</td></tr>
+<tr><td>scRNA-seq</td><td data-zh="3 個體（細胞 ≠ replicate）" data-en="3 individuals (cells ≠ replicates)">3 個體</td><td>6–8</td><td data-zh="樣本間 + 批次" data-en="Sample-level + batch">樣本 + 批次</td></tr>
+<tr><td data-zh="蛋白質體 DIA" data-en="DIA Proteomics">蛋白質體 DIA</td><td>3</td><td>5–8</td><td data-zh="樣本準備 + LC retention" data-en="Sample prep + LC retention">樣本準備</td></tr>
+<tr><td>WGS / WES</td><td data-zh="case-control 各 50" data-en="50 case / 50 control">50/50</td><td>200+</td><td data-zh="族群結構 + 罕見變異" data-en="Population structure + rare variants">族群結構</td></tr>
+<tr><td data-zh="GWAS" data-en="GWAS">GWAS</td><td>1,000</td><td>10,000+</td><td data-zh="多重檢定壓力" data-en="Multiple-testing burden">5×10⁻⁸ Bonferroni</td></tr>
+<tr><td>ATAC-seq</td><td>2</td><td>3–4</td><td data-zh="片段化效率" data-en="Tagmentation efficiency">Tn5 batch</td></tr>
+<tr><td data-zh="代謝體 untargeted" data-en="Untargeted metabolomics">代謝體</td><td>6</td><td>15+</td><td data-zh="飲食、晝夜節律" data-en="Diet, circadian">飲食、晝夜</td></tr>
+</tbody></table>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="決策引導" data-en="DECISION">決策引導</div>
+<h2 data-zh="五、設計檢查清單" data-en="V. Design Checklist">五、設計檢查清單</h2>
+<div class="decision-tree">
+<h4>🌳 <span data-zh="送樣前 7 個問題" data-en="7 questions before sample submission">送樣前 7 個問題</span></h4>
+<div data-lang="zh">
+<div class="dt-node"><span class="dt-q">Q1</span><div>主要對比 (primary contrast) 寫得出來嗎？例：treated vs. untreated within tissue X at timepoint Y。</div></div>
+<div class="dt-node"><span class="dt-q">Q2</span><div>n 是<strong>生物</strong>重複還是 pseudoreplicate？每組 ≥ 3？</div></div>
+<div class="dt-node"><span class="dt-q">Q3</span><div>批次有沒有與條件混淆？每個 plate / lane 都 balanced？</div></div>
+<div class="dt-node"><span class="dt-q">Q4</span><div>樣本處理順序有 randomize 嗎？（操作員、時間、儀器位置）</div></div>
+<div class="dt-node"><span class="dt-q">Q5</span><div>已知會影響結果的 covariate（age、sex、RIN、batch）有記錄嗎？</div></div>
+<div class="dt-node"><span class="dt-q">Q6</span><div>樣本量是否足以達到 80% power？做了 pilot 或文獻估計？</div></div>
+<div class="dt-node"><span class="dt-q">Q7</span><div>有預先註冊（pre-registration）或 lock-down 分析計畫嗎？</div></div>
+</div>
+<div data-lang="en">
+<div class="dt-node"><span class="dt-q">Q1</span><div>Can you state the <em>primary contrast</em>? e.g., treated vs. untreated within tissue X at timepoint Y.</div></div>
+<div class="dt-node"><span class="dt-q">Q2</span><div>Is n <strong>biological</strong> or a pseudoreplicate? Is each group ≥ 3?</div></div>
+<div class="dt-node"><span class="dt-q">Q3</span><div>Are batches confounded with condition? Each plate / lane balanced?</div></div>
+<div class="dt-node"><span class="dt-q">Q4</span><div>Is processing order randomized (operator, time, instrument position)?</div></div>
+<div class="dt-node"><span class="dt-q">Q5</span><div>Are known covariates (age, sex, RIN, batch) recorded?</div></div>
+<div class="dt-node"><span class="dt-q">Q6</span><div>Does sample size give ≥ 80% power? Based on pilot or literature?</div></div>
+<div class="dt-node"><span class="dt-q">Q7</span><div>Is the analysis plan pre-registered or locked down?</div></div>
+</div>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="程式碼" data-en="CODE">程式碼</div>
+<h2 data-zh="六、功率計算實作" data-en="VI. Power Calculation in Code">六、功率計算實作</h2>
+<div class="code-tabs"><div class="code-tab-btns"><button class="code-tab-btn active" onclick="switchTab(this,'r1')">R / RNASeqPower + pwr</button><button class="code-tab-btn" onclick="switchTab(this,'py1')">Python / statsmodels</button></div>
+<div class="code-tab-content active" id="r1"><pre><span class="comment"># R：RNA-seq 功率計算 / RNA-seq power</span>
+<span class="func">library</span>(RNASeqPower)
+
+<span class="comment"># cv 取自先導實驗或文獻；alpha=0.05 ÷ 估計 DE 基因數做粗略校正</span>
+<span class="func">rnapower</span>(depth = <span class="num">20</span>,      <span class="comment"># 平均 reads/gene</span>
+          n = <span class="num">5</span>,            <span class="comment"># 每組樣本數</span>
+          cv = <span class="num">0.4</span>,         <span class="comment"># 生物 CV</span>
+          effect = <span class="num">2</span>,        <span class="comment"># fold change</span>
+          alpha = <span class="num">5e-6</span>)      <span class="comment"># 校正後 alpha</span>
+
+<span class="comment"># 通用 two-sample t-test power / Generic t-test power</span>
+<span class="func">library</span>(pwr)
+<span class="func">pwr.t.test</span>(d = <span class="num">0.8</span>, power = <span class="num">0.8</span>,
+           sig.level = <span class="num">0.05</span>, type = <span class="str">"two.sample"</span>)
+<span class="comment"># d = Cohen's d = (μ1-μ2)/σ；輸出 n/group</span></pre></div>
+<div class="code-tab-content" id="py1"><pre><span class="comment"># Python：statsmodels TTestIndPower / power.solve_power</span>
+<span class="kw">from</span> statsmodels.stats.power <span class="kw">import</span> TTestIndPower
+
+ana = <span class="func">TTestIndPower</span>()
+n = ana.<span class="func">solve_power</span>(effect_size=<span class="num">0.8</span>, alpha=<span class="num">0.05</span>, power=<span class="num">0.8</span>)
+<span class="func">print</span>(<span class="str">f"n/group: {n:.1f}"</span>)
+
+<span class="comment"># scRNA-seq 細胞數估算（粗略）/ scRNA cell-count rule of thumb</span>
+<span class="comment"># 想偵測佔比 p 的稀有族群、每族群至少 m 個細胞，每樣本至少 m/p 個細胞</span>
+p, m = <span class="num">0.01</span>, <span class="num">50</span>
+<span class="func">print</span>(<span class="str">f"Cells / sample &gt;= {m/p:.0f}"</span>)   <span class="comment"># 5000 cells</span>
+
+<span class="comment"># GWAS：基於 OR 與 MAF 估 n</span>
+<span class="kw">from</span> statsmodels.stats.proportion <span class="kw">import</span> proportions_ztest
+<span class="comment"># 實務上用 GAS Power Calculator 或 Quanto</span></pre></div>
+</div>
+<div class="callout tip"><span class="callout-icon">💡</span><div>
+<span data-lang="zh"><strong>實用建議：</strong>用 GTEx / TCGA / HCA 等公開資料抓 CV 與基線分佈，比憑空猜更靠譜。Power 是 effect size、樣本數、雜訊三者拉鋸 — 弄清楚最低可接受 fold change 比追求 80% 還重要。</span>
+<span data-lang="en"><strong>Practical tip:</strong> Pull CV and baselines from GTEx / TCGA / HCA rather than guessing. Power is a tug-of-war between effect size, n, and noise — knowing your minimum interesting fold change matters more than chasing 80%.</span>
+</div></div>
+</section>
+
+<section class="quiz-section">
+<h3>📝 <span data-zh="自我檢測" data-en="Self-Check">自我檢測</span></h3>
+<div class="quiz-q" data-answer="0" data-exp-zh="同一隻動物的多個組織塊不是獨立的生物重複（pseudoreplicates），會誇大 p-value。" data-exp-en="Multiple tissue pieces from one animal are pseudoreplicates — they inflate p-values.">
+<p data-lang="zh">1. 從同一隻小鼠肝臟切 3 塊送 RNA-seq，n 應計為多少？</p>
+<p data-lang="en">1. Three pieces from one mouse liver sent for RNA-seq — what is n?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0"><span data-lang="zh">A. n = 1（pseudoreplicates）</span><span data-lang="en">A. n = 1 (pseudoreplicates)</span></div>
+<div class="quiz-opt" data-idx="1">n = 3</div>
+<div class="quiz-opt" data-idx="2">n = 6</div>
+<div class="quiz-opt" data-idx="3">n = 9</div>
+</div><div class="quiz-feedback"></div></div>
+<div class="quiz-q" data-answer="2" data-exp-zh="把不同條件平均分散到每個 plate（balanced）是預防 batch confounding 的關鍵。" data-exp-en="Balancing conditions across plates is key to preventing batch confounding.">
+<p data-lang="zh">2. 預防批次混淆最重要的設計原則？</p>
+<p data-lang="en">2. The most important principle for preventing batch confounding?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0"><span data-lang="zh">A. 增加技術重複</span><span data-lang="en">A. More technical replicates</span></div>
+<div class="quiz-opt" data-idx="1"><span data-lang="zh">B. 使用更貴的儀器</span><span data-lang="en">B. Use a fancier instrument</span></div>
+<div class="quiz-opt" data-idx="2"><span data-lang="zh">C. 每批次平均分散各種條件 (balanced)</span><span data-lang="en">C. Balance all conditions across each batch</span></div>
+<div class="quiz-opt" data-idx="3"><span data-lang="zh">D. 事後做 ComBat 修正</span><span data-lang="en">D. Apply ComBat afterwards</span></div>
+</div><div class="quiz-feedback"></div></div>
+<div class="quiz-q" data-answer="1" data-exp-zh="想偵測佔 1% 的稀有細胞，至少要 50/0.01 ≈ 5000 cells/sample。" data-exp-en="To detect 1% rare populations with 50 cells each, need ≥ 50/0.01 ≈ 5000 cells/sample.">
+<p data-lang="zh">3. scRNA-seq 想偵測佔 1% 的稀有族群、每族群至少 50 個細胞，每樣本至少需要多少細胞？</p>
+<p data-lang="en">3. scRNA-seq, to detect a 1% rare population with ≥ 50 cells/cluster, minimum cells/sample?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">500</div>
+<div class="quiz-opt" data-idx="1">5,000</div>
+<div class="quiz-opt" data-idx="2">50,000</div>
+<div class="quiz-opt" data-idx="3">500,000</div>
+</div><div class="quiz-feedback"></div></div>
+</section>
+
+<nav class="page-nav">
+<a href="01-overview.html"><span class="nav-dir" data-zh="← 上一章" data-en="← Prev">← 上一章</span><span class="nav-title" data-zh="Ch 1 · 高通量生物數據總覽" data-en="Ch 1 · High-Throughput Biology Data: Overview">Ch 1 · 高通量生物數據總覽</span></a>
+<a href="03-upstream-pipeline.html"><span class="nav-dir" data-zh="下一章 →" data-en="Next →">下一章 →</span><span class="nav-title" data-zh="Ch 3 · FASTQ → counts 上游流程" data-en="Ch 3 · FASTQ → Counts Upstream Pipeline">Ch 3 · FASTQ → counts 上游流程</span></a>
+</nav>
+</main>
+
+<footer class="site-footer">© Charlene — HTBA Interactive Tutorial</footer>
+<script src="i18n.js"></script>
+<script>
+window.addEventListener('scroll',()=>{const h=document.documentElement;document.getElementById('progressBar').style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100+'%';});
+function switchTab(b,id){const p=b.closest('.code-tabs');p.querySelectorAll('.code-tab-btn').forEach(x=>x.classList.remove('active'));p.querySelectorAll('.code-tab-content').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById(id).classList.add('active');}
+document.querySelectorAll('.quiz-q').forEach(q=>{const ans=+q.dataset.answer;q.querySelectorAll('.quiz-opt').forEach(o=>{o.onclick=()=>{if(q.dataset.done)return;q.dataset.done=1;const i=+o.dataset.idx,fb=q.querySelector('.quiz-feedback');q.querySelectorAll('.quiz-opt').forEach(x=>{if(+x.dataset.idx===ans)x.classList.add('correct');else if(+x.dataset.idx===i)x.classList.add('wrong');});if(i===ans){fb.className='quiz-feedback show correct-fb';fb.textContent='✓ '+(window.I18n&&window.I18n.get()==='en'?q.dataset.expEn:q.dataset.expZh);}else{fb.className='quiz-feedback show wrong-fb';fb.textContent='✗ '+(window.I18n&&window.I18n.get()==='en'?q.dataset.expEn:q.dataset.expZh);}};});});
+
+// Power simulator
+const ctx=document.getElementById('powChart').getContext('2d');
+const labels=Array.from({length:15},(_,i)=>i*4+2);
+const chart=new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'Power',data:[],borderColor:'#0e7490',backgroundColor:'rgba(14,116,144,.18)',fill:true,tension:.3,pointBackgroundColor:'#f97316'}]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{min:0,max:1,title:{display:true,text:'Power'}},x:{title:{display:true,text:'n / group'}}},plugins:{legend:{display:false}}}});
+function pow(n,d){const z_a=1.96;const z_b=d*Math.sqrt(n/2)-z_a;return 0.5*(1+erf(z_b/Math.sqrt(2)));}
+function erf(x){const sign=x<0?-1:1;x=Math.abs(x);const a=[0.254829592,-0.284496736,1.421413741,-1.453152027,1.061405429],p=0.3275911,t=1/(1+p*x);return sign*(1-(((((a[4]*t+a[3])*t)+a[2])*t+a[1])*t+a[0])*t*Math.exp(-x*x));}
+function upd(){
+  const n=+document.getElementById('sN2').value;
+  const c=+document.getElementById('sC2').value/100;
+  const f=+document.getElementById('sF2').value;
+  document.getElementById('valN2').textContent=n;
+  document.getElementById('valC2').textContent=Math.round(c*100);
+  document.getElementById('valF2').textContent=f.toFixed(1);
+  const d=f/c; // cohen's d approx
+  const data=labels.map(nn=>pow(nn,d));
+  chart.data.datasets[0].data=data;
+  chart.update();
+  const p=pow(n,d);
+  document.getElementById('statPow').textContent=(window.I18n&&window.I18n.get()==='en'?'Power: ':'Power: ')+(p*100).toFixed(0)+'%';
+  document.getElementById('statN').textContent=(window.I18n&&window.I18n.get()==='en'?'n/group: ':'n/group: ')+n;
+}
+['sN2','sC2','sF2'].forEach(id=>document.getElementById(id).oninput=upd);
+document.addEventListener('langchange',upd);upd();
+</script>
+</body></html>

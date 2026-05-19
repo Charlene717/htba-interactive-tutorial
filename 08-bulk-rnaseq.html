@@ -1,0 +1,180 @@
+<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Ch 8: Bulk RNA-seq — HTBA</title>
+<link rel="stylesheet" href="styles.css">
+</head><body>
+<nav class="top-nav"><div class="top-nav-inner">
+  <a href="index.html" class="top-nav-brand"><span>🧬</span> <span data-zh="高通量分析與整合" data-en="HTBA Tutorial">高通量分析與整合</span></a>
+  <ul class="top-nav-links">
+    <li><a href="01-overview.html">01</a></li><li><a href="02-experimental-design.html">02</a></li><li><a href="03-upstream-pipeline.html">03</a></li><li><a href="04-genomics-variants.html">04</a></li><li><a href="05-structural-variants.html">05</a></li><li><a href="06-atac-cutrun.html">06</a></li><li><a href="07-dna-methylation.html">07</a></li><li><a href="08-bulk-rnaseq.html" class="active">08</a></li><li><a href="09-scrnaseq.html">09</a></li><li><a href="10-spatial-omics.html">10</a></li><li><a href="11-long-read-rna.html">11</a></li><li><a href="12-proteomics.html">12</a></li><li><a href="13-metabolomics.html">13</a></li><li><a href="14-batch-correction.html">14</a></li><li><a href="15-multiomics-integration.html">15</a></li><li><a href="16-spatial-singlecell.html">16</a></li><li><a href="17-functional-enrichment.html">17</a></li><li><a href="18-network-analysis.html">18</a></li><li><a href="19-foundation-models.html">19</a></li><li><a href="20-reproducibility.html">20</a></li>
+    <li><a href="references/index.html" data-zh="📚 參考資料" data-en="📚 References">📚 參考資料</a></li>
+  </ul>
+</div></nav>
+<div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
+
+<header class="page-hero"><div class="step-badge">CH 8 / 20 · BLOCK 3 TRANSCRIPTOMICS</div>
+<h1 data-zh="Bulk RNA-seq 差異表達分析" data-en="Bulk RNA-seq Differential Expression">Bulk RNA-seq 差異表達</h1>
+<p class="subtitle" data-lang="zh">三大主流工具 (DESeq2 / edgeR / limma-voom)、shrinkage、normalize 與 MA/volcano plot — 一條龍打通。</p>
+<p class="subtitle" data-lang="en">The three mainstream tools (DESeq2 / edgeR / limma-voom), shrinkage, normalization, and MA/volcano plots — end-to-end.</p>
+</header>
+
+<main class="content-wrap">
+
+<section class="section">
+<div class="section-label" data-zh="輸入" data-en="INPUT">輸入</div>
+<h2 data-zh="一、counts 矩陣怎麼來" data-en="I. Where the Counts Matrix Comes From">一、counts 矩陣</h2>
+<div data-lang="zh"><p>Bulk RNA-seq 差異分析的起點是 <strong>gene × sample 整數 count matrix</strong>。三種主要產出路徑：</p>
+<ul><li><strong>STAR + featureCounts / HTSeq</strong>：傳統路徑，產 gene-level counts。</li><li><strong>Salmon / kallisto → tximport</strong>：transcript-level → 用 <code>tximport(..., countsFromAbundance="lengthScaledTPM")</code> 聚合到 gene-level，自動處理 isoform length bias。</li><li><strong>nf-core/rnaseq</strong>：上述兩條路徑皆內建，建議直接用。</li></ul></div>
+<div data-lang="en"><p>Bulk DE starts from a <strong>gene × sample integer count matrix</strong>. Three main routes:</p>
+<ul><li><strong>STAR + featureCounts / HTSeq</strong>: classic gene-level counts.</li><li><strong>Salmon / kallisto → tximport</strong>: transcript-level → aggregate to gene with <code>countsFromAbundance="lengthScaledTPM"</code>, auto-correcting isoform length bias.</li><li><strong>nf-core/rnaseq</strong>: both routes built-in — preferred.</li></ul></div>
+<div class="callout warn"><span class="callout-icon">⚠️</span><div>
+<span data-lang="zh"><strong>關鍵：</strong>差異分析務必用 <strong>raw counts</strong>，不要用 TPM / FPKM / RPKM。原因：DE 工具自己會在內部模型 dispersion 與 size factor，給標準化後值會破壞變異結構。</span>
+<span data-lang="en"><strong>Critical:</strong> Use <strong>raw counts</strong> for DE — never TPM / FPKM / RPKM. DE tools model dispersion and size factors internally; passing normalized values destroys the variance structure.</span>
+</div></div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="三大工具" data-en="3 TOOLS">三大工具</h2>
+<h2 data-zh="二、DESeq2 vs. edgeR vs. limma-voom" data-en="II. DESeq2 vs. edgeR vs. limma-voom">二、三大工具對比</h2>
+<table class="comp-table">
+<thead><tr><th>Aspect</th><th>DESeq2</th><th>edgeR</th><th>limma-voom</th></tr></thead>
+<tbody>
+<tr><td data-zh="模型" data-en="Model"><strong>模型</strong></td><td>NB GLM</td><td>NB GLM</td><td data-zh="log-CPM + voom 權重 + linear model" data-en="log-CPM + voom weights + linear model">linear w/ weights</td></tr>
+<tr><td><strong>Normalization</strong></td><td data-zh="size factor (median ratio)" data-en="size factor (median ratio)">median ratio</td><td>TMM</td><td>TMM</td></tr>
+<tr><td><strong>Shrinkage</strong></td><td data-zh="apeglm / ashr / normal — log2FC 收斂" data-en="apeglm / ashr / normal — log2FC shrinkage">apeglm / ashr</td><td data-zh="empirical Bayes on dispersion" data-en="empirical Bayes on dispersion">EB</td><td data-zh="eBayes on variance" data-en="eBayes on variance">eBayes</td></tr>
+<tr><td><strong>Speed</strong></td><td>★★★</td><td>★★★</td><td>★★★★★</td></tr>
+<tr><td data-zh="適合" data-en="Best for"><strong>適合</strong></td><td data-zh="預設首選，n=3-50" data-en="Default first pick, n=3–50">n=3-50 主流</td><td data-zh="大型 cohort、複雜 contrast" data-en="Large cohorts, complex contrasts">大 cohort</td><td data-zh="n &gt; 50、超大 cohort、microarray-like" data-en="n &gt; 50, very large cohorts, microarray-like">超大資料</td></tr>
+</tbody></table>
+<div class="callout tip"><span class="callout-icon">💡</span><div>
+<span data-lang="zh"><strong>實務建議：</strong>n &lt; 50 用 DESeq2；n &gt; 100 或 cohort study 用 limma-voom（速度差距明顯）；複雜 multi-factor design 或想精細控制 dispersion 用 edgeR。三者結果在合理 design 下高度一致 — 工具差異 ≪ 設計差異。</span>
+<span data-lang="en"><strong>Practical:</strong> Use DESeq2 for n &lt; 50; limma-voom for n &gt; 100 or cohorts (much faster); edgeR for complex multi-factor designs or fine dispersion control. Under sound designs the three agree closely — tool choice ≪ design choice.</span>
+</div></div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="互動模擬" data-en="INTERACTIVE">互動</h2>
+<h2 data-zh="三、Volcano plot 互動模擬" data-en="III. Volcano Plot Simulator">三、Volcano plot 模擬</h2>
+<div data-lang="zh"><p>滑桿調整 padj 與 |log2FC| 閾值，觀察 DEG 數量變化。常見組合：padj &lt; 0.05 + |log2FC| ≥ 1。</p></div>
+<div data-lang="en"><p>Slide padj and |log2FC| cutoffs to see DEG counts change. Common combo: padj &lt; 0.05 + |log2FC| ≥ 1.</p></div>
+<div class="interactive-panel">
+<div class="sim-stats"><span class="sim-stat pass" id="vUp">Up: —</span><span class="sim-stat fail" id="vDown">Down: —</span><span class="sim-stat" id="vNs">NS: —</span></div>
+<div class="slider-group"><label><span>|log2FC| ≥</span><span id="vFv">1.0</span></label><input type="range" id="vF" min="0.3" max="3" value="1.0" step="0.1"></div>
+<div class="slider-group"><label><span>padj &lt;</span><span id="vQv">0.05</span></label><input type="range" id="vQ" min="0.001" max="0.2" value="0.05" step="0.005"></div>
+<canvas id="vCanvas" style="background:var(--c-surface-alt);border-radius:8px;width:100%;height:300px"></canvas>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="程式碼" data-en="CODE">程式碼</div>
+<h2 data-zh="四、DESeq2 / edgeR / limma 一條龍" data-en="IV. DESeq2 / edgeR / limma End-to-end">四、實作</h2>
+<div class="code-tabs"><div class="code-tab-btns"><button class="code-tab-btn active" onclick="switchTab(this,'r1')">R / DESeq2</button><button class="code-tab-btn" onclick="switchTab(this,'r2')">R / edgeR</button><button class="code-tab-btn" onclick="switchTab(this,'r3')">R / limma-voom</button><button class="code-tab-btn" onclick="switchTab(this,'py1')">Python / pyDESeq2</button></div>
+<div class="code-tab-content active" id="r1"><pre><span class="comment"># DESeq2 — 工業標準</span>
+<span class="func">library</span>(DESeq2); <span class="func">library</span>(tximport)
+txi  &lt;- <span class="func">tximport</span>(salmon_files, type=<span class="str">"salmon"</span>, tx2gene=tx2gene)
+dds  &lt;- <span class="func">DESeqDataSetFromTximport</span>(txi, colData=coldata, design=~batch+condition)
+dds  &lt;- <span class="func">DESeq</span>(dds)
+res  &lt;- <span class="func">results</span>(dds, contrast=<span class="func">c</span>(<span class="str">"condition"</span>,<span class="str">"treated"</span>,<span class="str">"control"</span>))
+
+<span class="comment"># Shrinkage（推薦做圖前）</span>
+res_sh &lt;- <span class="func">lfcShrink</span>(dds, coef=<span class="str">"condition_treated_vs_control"</span>, type=<span class="str">"apeglm"</span>)
+
+<span class="comment"># 視覺化</span>
+<span class="func">plotMA</span>(res_sh, ylim=<span class="func">c</span>(-<span class="num">4</span>,<span class="num">4</span>))
+<span class="func">summary</span>(res, alpha=<span class="num">0.05</span>)
+<span class="func">library</span>(EnhancedVolcano)
+<span class="func">EnhancedVolcano</span>(res_sh, lab=<span class="func">rownames</span>(res_sh),
+                x=<span class="str">"log2FoldChange"</span>, y=<span class="str">"padj"</span>,
+                pCutoff=<span class="num">0.05</span>, FCcutoff=<span class="num">1</span>)</pre></div>
+<div class="code-tab-content" id="r2"><pre><span class="comment"># edgeR — GLM + QLF</span>
+<span class="func">library</span>(edgeR)
+y &lt;- <span class="func">DGEList</span>(counts=counts, group=group)
+keep &lt;- <span class="func">filterByExpr</span>(y, group=group); y &lt;- y[keep, ]
+y &lt;- <span class="func">calcNormFactors</span>(y, method=<span class="str">"TMM"</span>)
+
+design &lt;- <span class="func">model.matrix</span>(~batch+condition)
+y &lt;- <span class="func">estimateDisp</span>(y, design)
+fit &lt;- <span class="func">glmQLFit</span>(y, design)
+qlf &lt;- <span class="func">glmQLFTest</span>(fit, coef=<span class="str">"conditiontreated"</span>)
+<span class="func">topTags</span>(qlf, n=<span class="num">20</span>)</pre></div>
+<div class="code-tab-content" id="r3"><pre><span class="comment"># limma-voom — 大 cohort 首選</span>
+<span class="func">library</span>(limma); <span class="func">library</span>(edgeR)
+y &lt;- <span class="func">DGEList</span>(counts) |&gt; <span class="func">calcNormFactors</span>()
+design &lt;- <span class="func">model.matrix</span>(~batch+condition)
+v &lt;- <span class="func">voom</span>(y, design, plot=<span class="kw">TRUE</span>)
+fit &lt;- <span class="func">lmFit</span>(v, design) |&gt; <span class="func">eBayes</span>()
+<span class="func">topTable</span>(fit, coef=<span class="str">"conditiontreated"</span>, n=<span class="num">20</span>)</pre></div>
+<div class="code-tab-content" id="py1"><pre><span class="comment"># pyDESeq2 — Python 移植版（2023+）</span>
+<span class="comment"># pip install pydeseq2</span>
+<span class="kw">from</span> pydeseq2.dds <span class="kw">import</span> DeseqDataSet
+<span class="kw">from</span> pydeseq2.ds  <span class="kw">import</span> DeseqStats
+
+dds = <span class="func">DeseqDataSet</span>(counts=counts_df, metadata=meta_df,
+                   design_factors=[<span class="str">"batch"</span>, <span class="str">"condition"</span>])
+dds.<span class="func">deseq2</span>()
+ds = <span class="func">DeseqStats</span>(dds, contrast=[<span class="str">"condition"</span>, <span class="str">"treated"</span>, <span class="str">"control"</span>])
+ds.<span class="func">summary</span>()
+res_df = ds.results_df.<span class="func">sort_values</span>(<span class="str">"padj"</span>)</pre></div>
+</div>
+</section>
+
+<section class="quiz-section">
+<h3>📝 <span data-zh="自我檢測" data-en="Self-Check">自我檢測</span></h3>
+<div class="quiz-q" data-answer="0" data-exp-zh="DE 工具自己會處理 normalization，輸入必須是 raw counts 才能正確模型 dispersion。" data-exp-en="DE tools handle normalization internally — raw counts are required to model dispersion correctly.">
+<p data-lang="zh">1. 跑 DESeq2 / edgeR 的輸入應該是？</p>
+<p data-lang="en">1. Input to DESeq2 / edgeR should be?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">Raw counts</div><div class="quiz-opt" data-idx="1">TPM</div><div class="quiz-opt" data-idx="2">FPKM</div><div class="quiz-opt" data-idx="3">Z-score</div>
+</div><div class="quiz-feedback"></div></div>
+<div class="quiz-q" data-answer="3" data-exp-zh="limma-voom 速度極快，對 n &gt; 100 的大 cohort 是首選（DESeq2 會慢數十倍）。" data-exp-en="limma-voom is very fast — the top pick for n &gt; 100 cohorts (DESeq2 can be 10–50× slower).">
+<p data-lang="zh">2. 1000 樣本 cohort DE 分析最推薦？</p>
+<p data-lang="en">2. Recommended for a 1000-sample cohort DE analysis?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">DESeq2</div><div class="quiz-opt" data-idx="1">Mutect2</div><div class="quiz-opt" data-idx="2">Bismark</div><div class="quiz-opt" data-idx="3">limma-voom</div>
+</div><div class="quiz-feedback"></div></div>
+<div class="quiz-q" data-answer="2" data-exp-zh="apeglm 是 DESeq2 內建的 log2FC shrinkage，可降低低 count 基因被高估 fold change 的問題。" data-exp-en="apeglm shrinks log2FC in DESeq2 — reduces overestimated fold-changes for low-count genes.">
+<p data-lang="zh">3. DESeq2 中收斂 log2FC、降低低 count 基因偽差的方法？</p>
+<p data-lang="en">3. DESeq2's method to shrink log2FC and reduce low-count noise?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">TPM</div><div class="quiz-opt" data-idx="1">PCA</div><div class="quiz-opt" data-idx="2">apeglm (lfcShrink)</div><div class="quiz-opt" data-idx="3">Bonferroni</div>
+</div><div class="quiz-feedback"></div></div>
+</section>
+
+<nav class="page-nav">
+<a href="07-dna-methylation.html"><span class="nav-dir" data-zh="← 上一章" data-en="← Prev">← 上一章</span><span class="nav-title" data-zh="Ch 7 · DNA 甲基化 (Methylation)" data-en="Ch 7 · DNA Methylation">Ch 7 · DNA 甲基化 (Methylation)</span></a>
+<a href="09-scrnaseq.html"><span class="nav-dir" data-zh="下一章 →" data-en="Next →">下一章 →</span><span class="nav-title" data-zh="Ch 9 · scRNA-seq 核心流程速覽" data-en="Ch 9 · scRNA-seq Core Workflow Recap">Ch 9 · scRNA-seq 核心流程速覽</span></a>
+</nav>
+</main>
+
+<footer class="site-footer">© Charlene — HTBA Interactive Tutorial</footer>
+<script src="i18n.js"></script>
+<script>
+window.addEventListener('scroll',()=>{const h=document.documentElement;document.getElementById('progressBar').style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100+'%';});
+function switchTab(b,id){const p=b.closest('.code-tabs');p.querySelectorAll('.code-tab-btn').forEach(x=>x.classList.remove('active'));p.querySelectorAll('.code-tab-content').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById(id).classList.add('active');}
+document.querySelectorAll('.quiz-q').forEach(q=>{const ans=+q.dataset.answer;q.querySelectorAll('.quiz-opt').forEach(o=>{o.onclick=()=>{if(q.dataset.done)return;q.dataset.done=1;const i=+o.dataset.idx,fb=q.querySelector('.quiz-feedback');q.querySelectorAll('.quiz-opt').forEach(x=>{if(+x.dataset.idx===ans)x.classList.add('correct');else if(+x.dataset.idx===i)x.classList.add('wrong');});if(i===ans){fb.className='quiz-feedback show correct-fb';fb.textContent='✓ '+(window.I18n&&window.I18n.get()==='en'?q.dataset.expEn:q.dataset.expZh);}else{fb.className='quiz-feedback show wrong-fb';fb.textContent='✗ '+(window.I18n&&window.I18n.get()==='en'?q.dataset.expEn:q.dataset.expZh);}};});});
+// volcano
+const cv=document.getElementById('vCanvas'),ctx=cv.getContext('2d');
+function r(){let u=0,v=0;while(u===0)u=Math.random();while(v===0)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+const genes=[];for(let i=0;i<1500;i++){const isDE=Math.random()<.12;const fc=isDE?(r()*2.2+(Math.random()<.5?2:-2)):r()*0.4;const p=isDE?Math.pow(10,-(2+Math.random()*8)):Math.pow(10,-Math.random()*2.5);genes.push({fc,p});}
+function draw(){
+  const f=+document.getElementById('vF').value,q=+document.getElementById('vQ').value;
+  document.getElementById('vFv').textContent=f.toFixed(1);document.getElementById('vQv').textContent=q.toFixed(3);
+  const w=cv.width=cv.offsetWidth,h=cv.height=cv.offsetHeight;
+  ctx.fillStyle='#eef5f7';ctx.fillRect(0,0,w,h);
+  // axes guides
+  ctx.strokeStyle='#d97706';ctx.setLineDash([4,3]);
+  ctx.beginPath();ctx.moveTo(w/2-f*30,0);ctx.lineTo(w/2-f*30,h);ctx.moveTo(w/2+f*30,0);ctx.lineTo(w/2+f*30,h);ctx.stroke();
+  const yQ=h-(-Math.log10(q)/12)*h;ctx.beginPath();ctx.moveTo(0,yQ);ctx.lineTo(w,yQ);ctx.stroke();ctx.setLineDash([]);
+  let up=0,dn=0,ns=0;
+  genes.forEach(g=>{const x=w/2+g.fc*30,y=h-(-Math.log10(g.p)/12)*h;
+    const sig=Math.abs(g.fc)>=f&&g.p<q;
+    let c='#94a3b8';if(sig){if(g.fc>0){c='#dc2626';up++;}else{c='#0e7490';dn++;}}else ns++;
+    ctx.fillStyle=c;ctx.beginPath();ctx.arc(x,y,2.2,0,Math.PI*2);ctx.fill();
+  });
+  ctx.fillStyle='#0f172a';ctx.font='10px sans-serif';ctx.fillText('log2FC',w/2-15,h-2);ctx.fillText('-log10(padj)',2,12);
+  document.getElementById('vUp').textContent='Up: '+up;
+  document.getElementById('vDown').textContent='Down: '+dn;
+  document.getElementById('vNs').textContent='NS: '+ns;
+}
+['vF','vQ'].forEach(id=>document.getElementById(id).oninput=draw);
+window.addEventListener('resize',draw);setTimeout(draw,50);
+</script>
+</body></html>

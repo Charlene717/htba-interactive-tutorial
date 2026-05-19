@@ -1,0 +1,188 @@
+<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Ch 5: 結構變異與長讀定序 — HTBA</title>
+<link rel="stylesheet" href="styles.css">
+</head><body>
+<nav class="top-nav"><div class="top-nav-inner">
+  <a href="index.html" class="top-nav-brand"><span>🧬</span> <span data-zh="高通量分析與整合" data-en="HTBA Tutorial">高通量分析與整合</span></a>
+  <ul class="top-nav-links">
+    <li><a href="01-overview.html">01</a></li><li><a href="02-experimental-design.html">02</a></li><li><a href="03-upstream-pipeline.html">03</a></li><li><a href="04-genomics-variants.html">04</a></li><li><a href="05-structural-variants.html" class="active">05</a></li><li><a href="06-atac-cutrun.html">06</a></li><li><a href="07-dna-methylation.html">07</a></li><li><a href="08-bulk-rnaseq.html">08</a></li><li><a href="09-scrnaseq.html">09</a></li><li><a href="10-spatial-omics.html">10</a></li><li><a href="11-long-read-rna.html">11</a></li><li><a href="12-proteomics.html">12</a></li><li><a href="13-metabolomics.html">13</a></li><li><a href="14-batch-correction.html">14</a></li><li><a href="15-multiomics-integration.html">15</a></li><li><a href="16-spatial-singlecell.html">16</a></li><li><a href="17-functional-enrichment.html">17</a></li><li><a href="18-network-analysis.html">18</a></li><li><a href="19-foundation-models.html">19</a></li><li><a href="20-reproducibility.html">20</a></li>
+    <li><a href="references/index.html" data-zh="📚 參考資料" data-en="📚 References">📚 參考資料</a></li>
+  </ul>
+</div></nav>
+<div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
+
+<header class="page-hero"><div class="step-badge">CH 5 / 20 · BLOCK 2 GENOMICS</div>
+<h1 data-zh="結構變異與長讀定序" data-en="Structural Variants & Long-read Sequencing">結構變異與長讀定序</h1>
+<p class="subtitle" data-lang="zh">短讀偵測不到的世界：SV、CNV、重複序列、T2T 與 pangenome graph。</p>
+<p class="subtitle" data-lang="en">The world short reads miss: SVs, CNVs, repeats, T2T genomes and pangenome graphs.</p>
+</header>
+
+<main class="content-wrap">
+
+<section class="section">
+<div class="section-label" data-zh="SV 類別" data-en="SV TYPES">SV 類別</div>
+<h2 data-zh="一、結構變異 (SV) 六大類" data-en="I. The Six Major Classes of Structural Variants">一、SV 六大類</h2>
+<div class="card-grid cols-3">
+<div class="card"><h4 data-zh="DEL（缺失）" data-en="DEL (deletion)">DEL（缺失）</h4><p data-lang="zh">≥ 50 bp 被刪除。微缺失（&lt; 50 bp）歸 indel。</p><p data-lang="en">≥ 50 bp deletion. Micro-deletions (&lt; 50 bp) are indels.</p></div>
+<div class="card"><h4 data-zh="DUP（重複）" data-en="DUP (duplication)">DUP（重複）</h4><p data-lang="zh">區段被複製多份；tandem 或 dispersed。CNV 的常見來源。</p><p data-lang="en">Region duplicated; tandem or dispersed. A common source of CNVs.</p></div>
+<div class="card"><h4 data-zh="INV（倒位）" data-en="INV (inversion)">INV（倒位）</h4><p data-lang="zh">區段翻轉方向。短讀偵測非常困難 — 雙端 read 仍 mapping 到同位點。</p><p data-lang="en">Region flipped. Very hard for short reads — both ends still map to the same locus.</p></div>
+<div class="card"><h4>INS（插入）</h4><p data-lang="zh">新片段插入（含 mobile elements LINE/SINE/SVA）。長讀 + de novo 組裝才能完整解析。</p><p data-lang="en">Novel insertion (including mobile elements LINE/SINE/SVA). Full resolution needs long reads + de novo assembly.</p></div>
+<div class="card"><h4>TRA / BND（易位）</h4><p data-lang="zh">染色體間或內部斷裂與重接（breakend）。腫瘤 fusion gene、淋巴瘤 BCR-ABL 經典案例。</p><p data-lang="en">Inter- or intra-chromosomal break-and-join (breakends). Classic in tumor fusion genes (e.g., BCR-ABL).</p></div>
+<div class="card"><h4>CNV（拷貝數變異）</h4><p data-lang="zh">區段拷貝數 ≠ 2（正常 diploid）。CNVkit / GATK CNV / Control-FREEC 透過 depth ratio + B-allele frequency 估計。</p><p data-lang="en">Copy number ≠ 2 (normal diploid). CNVkit / GATK CNV / Control-FREEC use depth ratio + BAF.</p></div>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="工具" data-en="TOOLS">工具</div>
+<h2 data-zh="二、SV 偵測工具對照" data-en="II. SV Detection Tool Comparison">二、SV 偵測工具對照</h2>
+<table class="comp-table">
+<thead><tr><th data-zh="工具" data-en="Tool">工具</th><th>Platform</th><th data-zh="主訊號" data-en="Signal">主訊號</th><th data-zh="強項" data-en="Strength">強項</th></tr></thead>
+<tbody>
+<tr><td><strong>Manta</strong></td><td>Illumina</td><td>SR + RP + assembly</td><td data-zh="germline 與 somatic 通用、速度快" data-en="Germline + somatic, fast">通用、快</td></tr>
+<tr><td><strong>DELLY</strong></td><td>Illumina</td><td>SR + RP</td><td data-zh="平衡敏感度與精度" data-en="Balanced sensitivity / precision">平衡</td></tr>
+<tr><td><strong>GRIDSS2</strong></td><td>Illumina</td><td>Local assembly</td><td data-zh="複雜重排、 somatic 強" data-en="Complex rearrangements, strong somatic">複雜 SV</td></tr>
+<tr><td><strong>Sniffles2</strong></td><td>PacBio + ONT</td><td>Split-read</td><td data-zh="長讀首選、population mode" data-en="Long-read favorite, population mode">長讀首選</td></tr>
+<tr><td><strong>pbsv</strong></td><td>PacBio HiFi</td><td>Split-read</td><td data-zh="PacBio 官方" data-en="Official PacBio">PacBio 原生</td></tr>
+<tr><td><strong>CNVkit</strong></td><td>Illumina WES/WGS</td><td>Depth + BAF</td><td data-zh="CNV、含腫瘤模式" data-en="CNV; tumor mode supported">CNV</td></tr>
+<tr><td><strong>SVision-pro</strong></td><td>Long-read 2024</td><td>CNN</td><td data-zh="複雜 SV 深度學習" data-en="Complex SV via deep learning">DL-based</td></tr>
+</tbody></table>
+<div class="callout tip"><span class="callout-icon">💡</span><div>
+<span data-lang="zh"><strong>多工具 ensemble：</strong>實務上常用 <strong>SURVIVOR</strong> 或 <strong>truvari</strong> 合併 Manta + Delly + Sniffles 的 VCF，再取 2/3 以上工具支持的 SV 提高精度。</span>
+<span data-lang="en"><strong>Multi-caller ensemble:</strong> Use <strong>SURVIVOR</strong> or <strong>truvari</strong> to merge Manta + Delly + Sniffles VCFs and keep SVs supported by ≥2 of 3 callers for higher precision.</span>
+</div></div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="T2T 與 Pangenome" data-en="T2T & PANGENOME">T2T 與 Pangenome</h2>
+<h2 data-zh="三、T2T 與 Human Pangenome Reference" data-en="III. T2T & Human Pangenome Reference">三、T2T 與 Pangenome</h2>
+<div data-lang="zh">
+<p><strong>T2T-CHM13</strong>（2022 Science）：第一個完整、無 gap 的人類參考基因組（3.055 Gb），新增 200 Mb 序列含 1956 個新基因，徹底解開 centromere、acrocentric 短臂、rDNA 區。</p>
+<p><strong>Human Pangenome Reference Consortium (HPRC) 2023 Nature</strong>：用 47 個多元族群個體做的 graph-based 參考，比 GRCh38 多偵測 104% 的 SV、平均減少 34% 的 small-variant 錯誤。工具：<code>vg</code>、<code>minigraph-cactus</code>、<code>PanGenie</code>、<code>vg giraffe</code>。</p>
+<p><strong>2024-2025 進展：</strong>HPRC Year 2 完成 ~100 個人；MGI/CN 人類 pangenome (CPC) 提供更多東亞代表；T2T-Y (Nurk et al.) 補完 Y 染色體。</p>
+</div>
+<div data-lang="en">
+<p><strong>T2T-CHM13</strong> (Science 2022): the first complete, gapless human reference (3.055 Gb), adding 200 Mb of sequence and 1956 new genes — fully resolving centromeres, acrocentric short arms, and rDNAs.</p>
+<p><strong>HPRC Pangenome (Nature 2023):</strong> a graph-based reference from 47 diverse individuals; detects 104% more SVs than GRCh38 and reduces small-variant errors by ~34% on average. Tools: <code>vg</code>, <code>minigraph-cactus</code>, <code>PanGenie</code>, <code>vg giraffe</code>.</p>
+<p><strong>2024-2025 progress:</strong> HPRC Year-2 reached ~100 genomes; the MGI/CN human pangenome (CPC) adds East-Asian diversity; T2T-Y (Nurk et al.) completed the Y chromosome.</p>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="互動模擬" data-en="INTERACTIVE">互動</div>
+<h2 data-zh="四、SV 偵測 power 隨深度與讀長變化" data-en="IV. SV Power by Depth & Read length">四、SV 偵測 power</h2>
+<div class="interactive-panel">
+<div class="sim-stats"><span class="sim-stat pass" id="svP">SV power: —</span><span class="sim-stat warn" id="svC">Best caller: —</span></div>
+<div class="slider-group"><label><span data-zh="覆蓋深度 ×" data-en="Coverage ×">覆蓋深度</span><span id="svDv">30</span>×</label><input type="range" id="svD" min="5" max="80" value="30" step="1"></div>
+<div class="slider-group"><label><span data-zh="平均讀長 (bp)" data-en="Read length (bp)">讀長 (bp)</span><span id="svLv">150</span></label><input type="range" id="svL" min="100" max="20000" value="150" step="50"></div>
+<div id="svBars" style="display:grid;gap:6px;margin-top:14px"></div>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="程式碼" data-en="CODE">程式碼</div>
+<h2 data-zh="五、SV 呼叫與合併" data-en="V. SV Calling and Merging">五、SV 呼叫與合併</h2>
+<div class="code-tabs"><div class="code-tab-btns"><button class="code-tab-btn active" onclick="switchTab(this,'sh1')">Shell / Manta + Sniffles</button><button class="code-tab-btn" onclick="switchTab(this,'sh2')">SURVIVOR merge</button><button class="code-tab-btn" onclick="switchTab(this,'r1')">R / StructuralVariantAnnotation</button></div>
+<div class="code-tab-content active" id="sh1"><pre><span class="comment"># Manta — Illumina short-read SV</span>
+<span class="func">configManta.py</span> --bam sample.bam --referenceFasta ref.fa \
+                --runDir mantaRun
+<span class="func">mantaRun/runWorkflow.py</span>     <span class="comment"># 輸出 candidateSV.vcf.gz</span>
+
+<span class="comment"># Sniffles2 — long-read SV</span>
+<span class="func">sniffles</span> --input sample.hifi.bam --reference ref.fa \
+         --vcf sample.sniffles.vcf --threads <span class="num">16</span> \
+         --tandem-repeats hg38.trf.bed   <span class="comment"># TR-aware</span>
+
+<span class="comment"># CNVkit — CNV from WES/WGS</span>
+<span class="func">cnvkit.py</span> batch tumor.bam --normal normal.bam \
+          --targets exons.bed --fasta ref.fa --output-dir cnv_out</pre></div>
+<div class="code-tab-content" id="sh2"><pre><span class="comment"># SURVIVOR — 多 caller ensemble</span>
+<span class="kw">cat</span> &gt; vcf_list.txt &lt;&lt;EOF
+manta.vcf
+delly.vcf
+sniffles.vcf
+EOF
+
+<span class="func">SURVIVOR</span> merge vcf_list.txt <span class="num">500</span> <span class="num">2</span> <span class="num">1</span> <span class="num">1</span> <span class="num">0</span> <span class="num">30</span> merged.vcf
+<span class="comment"># 參數：距離 500bp | 至少 2 caller 支持 | 同 type | 同 strand | dup-or-ins | ≥30 bp</span>
+
+<span class="comment"># 與 dbVar / DGV 比對篩選 novel SV</span>
+<span class="func">bedtools</span> intersect -v -a merged.vcf -b common_SV_dbvar.bed &gt; novel.vcf</pre></div>
+<div class="code-tab-content" id="r1"><pre><span class="comment"># R — 註釋與視覺化</span>
+<span class="func">library</span>(StructuralVariantAnnotation)
+<span class="func">library</span>(VariantAnnotation)
+
+vcf &lt;- <span class="func">readVcf</span>(<span class="str">"merged.vcf"</span>, <span class="str">"hg38"</span>)
+gr  &lt;- <span class="func">breakpointRanges</span>(vcf)
+
+<span class="comment"># 與 RefSeq 基因註釋交集 — 偵測 fusion 候選</span>
+<span class="func">library</span>(TxDb.Hsapiens.UCSC.hg38.knownGene)
+txdb &lt;- TxDb.Hsapiens.UCSC.hg38.knownGene
+hits &lt;- <span class="func">findOverlaps</span>(gr, <span class="func">genes</span>(txdb))
+
+<span class="comment"># 用 gTrack / Sushi 畫局部結構</span>
+<span class="func">library</span>(gTrack)
+<span class="func">plot</span>(<span class="func">gTrack</span>(<span class="str">"hg38"</span>, gr[<span class="num">1</span>:<span class="num">10</span>]))</pre></div>
+</div>
+</section>
+
+<section class="quiz-section">
+<h3>📝 <span data-zh="自我檢測" data-en="Self-Check">自我檢測</span></h3>
+<div class="quiz-q" data-answer="2" data-exp-zh="長讀 + Sniffles2 (PacBio/ONT) 在 INV、複雜 SV 與 mobile element insertion 上明顯優於短讀。" data-exp-en="Long reads + Sniffles2 (PacBio/ONT) clearly outperform short reads for INVs, complex SVs, and mobile-element insertions.">
+<p data-lang="zh">1. 想完整解析複雜倒位 (INV) 與 mobile element 插入，最佳組合？</p>
+<p data-lang="en">1. Best combination to resolve complex INVs and mobile-element insertions?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0"><span data-lang="zh">A. Illumina 30× + Manta</span><span data-lang="en">A. Illumina 30× + Manta</span></div>
+<div class="quiz-opt" data-idx="1">EPIC array</div>
+<div class="quiz-opt" data-idx="2"><span data-lang="zh">C. PacBio HiFi + Sniffles2</span><span data-lang="en">C. PacBio HiFi + Sniffles2</span></div>
+<div class="quiz-opt" data-idx="3">Sanger</div>
+</div><div class="quiz-feedback"></div></div>
+<div class="quiz-q" data-answer="1" data-exp-zh="T2T-CHM13 是 2022 年完成的 gapless 人類參考，新增約 200 Mb 序列。" data-exp-en="T2T-CHM13 (2022) is the first gapless human reference, adding ~200 Mb of sequence.">
+<p data-lang="zh">2. T2T-CHM13 相對於 GRCh38 主要的突破？</p>
+<p data-lang="en">2. T2T-CHM13's main breakthrough over GRCh38?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0"><span data-lang="zh">A. 包含 47 個個體</span><span data-lang="en">A. Includes 47 individuals</span></div>
+<div class="quiz-opt" data-idx="1"><span data-lang="zh">B. 第一個 gapless 完整人類基因組</span><span data-lang="en">B. First gapless complete human genome</span></div>
+<div class="quiz-opt" data-idx="2"><span data-lang="zh">C. 同時含蛋白質與代謝體</span><span data-lang="en">C. Includes proteome + metabolome</span></div>
+<div class="quiz-opt" data-idx="3"><span data-lang="zh">D. 全部是 ONT 資料</span><span data-lang="en">D. Built entirely from ONT</span></div>
+</div><div class="quiz-feedback"></div></div>
+<div class="quiz-q" data-answer="0" data-exp-zh="SURVIVOR 合併多 caller 並取 ≥2 工具支持的 SV，提升精度與召回的平衡。" data-exp-en="SURVIVOR merges multi-caller VCFs and keeps SVs supported by ≥2 — balancing precision and recall.">
+<p data-lang="zh">3. 合併多個 SV caller VCF、取「≥2 工具支持」的常用工具？</p>
+<p data-lang="en">3. Tool to merge multiple SV-caller VCFs and keep SVs supported by ≥2 callers?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">SURVIVOR</div><div class="quiz-opt" data-idx="1">GATK</div><div class="quiz-opt" data-idx="2">CNVkit</div><div class="quiz-opt" data-idx="3">VEP</div>
+</div><div class="quiz-feedback"></div></div>
+</section>
+
+<nav class="page-nav">
+<a href="04-genomics-variants.html"><span class="nav-dir" data-zh="← 上一章" data-en="← Prev">← 上一章</span><span class="nav-title" data-zh="Ch 4 · 變異偵測與註釋 (SNV / Indel)" data-en="Ch 4 · Variant Calling &amp; Annotation (SNV / Indel)">Ch 4 · 變異偵測與註釋 (SNV / Indel)</span></a>
+<a href="06-atac-cutrun.html"><span class="nav-dir" data-zh="下一章 →" data-en="Next →">下一章 →</span><span class="nav-title" data-zh="Ch 6 · ATAC-seq 與 CUT&amp;amp;RUN / CUT&amp;amp;Tag" data-en="Ch 6 · ATAC-seq &amp; CUT&amp;RUN / CUT&amp;Tag">Ch 6 · ATAC-seq 與 CUT&amp;RUN / CUT&amp;Tag</span></a>
+</nav>
+</main>
+
+<footer class="site-footer">© Charlene — HTBA Interactive Tutorial</footer>
+<script src="i18n.js"></script>
+<script>
+window.addEventListener('scroll',()=>{const h=document.documentElement;document.getElementById('progressBar').style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100+'%';});
+function switchTab(b,id){const p=b.closest('.code-tabs');p.querySelectorAll('.code-tab-btn').forEach(x=>x.classList.remove('active'));p.querySelectorAll('.code-tab-content').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById(id).classList.add('active');}
+document.querySelectorAll('.quiz-q').forEach(q=>{const ans=+q.dataset.answer;q.querySelectorAll('.quiz-opt').forEach(o=>{o.onclick=()=>{if(q.dataset.done)return;q.dataset.done=1;const i=+o.dataset.idx,fb=q.querySelector('.quiz-feedback');q.querySelectorAll('.quiz-opt').forEach(x=>{if(+x.dataset.idx===ans)x.classList.add('correct');else if(+x.dataset.idx===i)x.classList.add('wrong');});if(i===ans){fb.className='quiz-feedback show correct-fb';fb.textContent='✓ '+(window.I18n&&window.I18n.get()==='en'?q.dataset.expEn:q.dataset.expZh);}else{fb.className='quiz-feedback show wrong-fb';fb.textContent='✗ '+(window.I18n&&window.I18n.get()==='en'?q.dataset.expEn:q.dataset.expZh);}};});});
+// SV power sim
+const callers=[{n:'Manta (SR)',sweet:{dMin:25,dMax:80,lMax:300}},{n:'DELLY (SR)',sweet:{dMin:25,dMax:80,lMax:300}},{n:'Sniffles2 (LR)',sweet:{dMin:10,dMax:80,lMax:30000,lMin:5000}},{n:'GRIDSS2 (SR)',sweet:{dMin:30,dMax:80,lMax:500}}];
+const wrap=document.getElementById('svBars');
+function bar(name,pct,best){const div=document.createElement('div');div.style.cssText='display:flex;align-items:center;gap:8px;font-size:.82rem';div.innerHTML='<span style="width:120px;color:var(--c-ink)">'+name+'</span><div style="flex:1;height:14px;background:var(--c-bg-alt);border-radius:7px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+(best?'#f97316':'#0e7490')+';transition:.3s"></div></div><span style="width:42px;text-align:right;color:var(--c-accent-dark);font-weight:600">'+pct+'%</span>';return div;}
+function updSV(){
+  const d=+document.getElementById('svD').value, l=+document.getElementById('svL').value;
+  document.getElementById('svDv').textContent=d;document.getElementById('svLv').textContent=l;
+  const scores=callers.map(c=>{
+    const dOk = d>=c.sweet.dMin?Math.min(1,d/40):0.3;
+    const lOk = l<=c.sweet.lMax?(c.sweet.lMin?(l>=c.sweet.lMin?1:l/c.sweet.lMin):1):Math.max(0.05,1-(l-c.sweet.lMax)/2000);
+    return Math.round(Math.min(0.95,dOk*lOk)*100);
+  });
+  const best=scores.indexOf(Math.max(...scores));
+  wrap.innerHTML='';
+  callers.forEach((c,i)=>wrap.append(bar(c.n,scores[i],i===best)));
+  document.getElementById('svP').textContent='Best power: '+scores[best]+'%';
+  document.getElementById('svC').textContent='Best caller: '+callers[best].n;
+}
+['svD','svL'].forEach(id=>document.getElementById(id).oninput=updSV);updSV();
+</script>
+</body></html>

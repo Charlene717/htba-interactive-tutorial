@@ -1,0 +1,183 @@
+<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Ch 14: 批次效應與水平整合 — HTBA</title>
+<link rel="stylesheet" href="styles.css">
+</head><body>
+<nav class="top-nav"><div class="top-nav-inner">
+  <a href="index.html" class="top-nav-brand"><span>🧬</span> <span data-zh="高通量分析與整合" data-en="HTBA Tutorial">高通量分析與整合</span></a>
+  <ul class="top-nav-links"><li><a href="01-overview.html">01</a></li><li><a href="02-experimental-design.html">02</a></li><li><a href="03-upstream-pipeline.html">03</a></li><li><a href="04-genomics-variants.html">04</a></li><li><a href="05-structural-variants.html">05</a></li><li><a href="06-atac-cutrun.html">06</a></li><li><a href="07-dna-methylation.html">07</a></li><li><a href="08-bulk-rnaseq.html">08</a></li><li><a href="09-scrnaseq.html">09</a></li><li><a href="10-spatial-omics.html">10</a></li><li><a href="11-long-read-rna.html">11</a></li><li><a href="12-proteomics.html">12</a></li><li><a href="13-metabolomics.html">13</a></li><li><a href="14-batch-correction.html" class="active">14</a></li><li><a href="15-multiomics-integration.html">15</a></li><li><a href="16-spatial-singlecell.html">16</a></li><li><a href="17-functional-enrichment.html">17</a></li><li><a href="18-network-analysis.html">18</a></li><li><a href="19-foundation-models.html">19</a></li><li><a href="20-reproducibility.html">20</a></li>
+    <li><a href="references/index.html" data-zh="📚 參考資料" data-en="📚 References">📚 參考資料</a></li>
+  </ul>
+</div></nav>
+<div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
+
+<header class="page-hero"><div class="step-badge">CH 14 / 20 · BLOCK 5 INTEGRATION</div>
+<h1 data-zh="批次效應與水平整合" data-en="Batch Effects & Horizontal Integration">批次效應與水平整合</h1>
+<p class="subtitle" data-lang="zh">同一組學 × 跨樣本 / 跨研究：ComBat、Harmony、scVI、Scanorama、MNN — benchmark 與選型。</p>
+<p class="subtitle" data-lang="en">Same omics × across samples / studies: ComBat, Harmony, scVI, Scanorama, MNN — benchmarks and selection.</p>
+</header>
+
+<main class="content-wrap">
+
+<section class="section">
+<div class="section-label" data-zh="核心觀念" data-en="CONCEPTS">核心觀念</h2>
+<h2 data-zh="一、為什麼水平整合不能跳過？" data-en="I. Why Horizontal Integration Matters">一、為什麼需要</h2>
+<div data-lang="zh"><p><strong>水平整合 (horizontal integration)</strong>：同一種 omics、跨樣本 / 跨研究合併（如：5 個 lab 的 scRNA-seq、TCGA + GTEx）。批次效應來自試劑批次、操作員、定序儀、年份等系統性差異，常與條件混淆，會在 PCA 第一軸主導變異 — 必須校正才能做 cohort 級別的分析。</p>
+<p><strong>核心 trade-off：</strong>「過度校正」會洗掉真實生物訊號（如疾病 vs. 正常）；「校正不足」則 PCA / DE 會被批次主宰。Benchmark（Tran 2020、Luecken 2022 NBT）已成為選型依據。</p></div>
+<div data-lang="en"><p><strong>Horizontal integration:</strong> same omics, across samples / studies (e.g., scRNA-seq from 5 labs; TCGA + GTEx). Batch effects come from reagent lots, operators, instruments, years — systematic differences often confounded with condition. They dominate the first PCA axis and must be corrected for cohort-level analysis.</p>
+<p><strong>Core trade-off:</strong> over-correction wipes out real biological signal (e.g., disease vs. normal); under-correction lets batches dominate PCA / DE. Benchmarks (Tran 2020, Luecken 2022 NBT) guide selection.</p></div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="工具比較" data-en="TOOL COMPARISON">工具比較</h2>
+<h2 data-zh="二、主流批次校正工具" data-en="II. Mainstream Batch Correction Tools">二、工具比較</h2>
+<table class="comp-table">
+<thead><tr><th>Tool</th><th data-zh="領域" data-en="Domain">領域</th><th data-zh="原理" data-en="Principle">原理</th><th data-zh="特性" data-en="Notes">特性</th></tr></thead>
+<tbody>
+<tr><td><strong>ComBat / ComBat-seq</strong></td><td>Bulk omics</td><td data-zh="EB GLM" data-en="EB GLM">EB GLM</td><td data-zh="bulk RNA / Methyl 主流；ComBat-seq 直接吃 counts" data-en="Mainstay for bulk RNA / methyl; ComBat-seq takes counts directly">bulk 標準</td></tr>
+<tr><td><strong>limma::removeBatchEffect</strong></td><td>Bulk omics</td><td data-zh="linear model 殘差" data-en="Linear-model residuals">線性</td><td data-zh="輕量、可保留 design contrast" data-en="Lightweight; preserves design contrast">線性殘差</td></tr>
+<tr><td><strong>Harmony</strong></td><td>scRNA / scATAC</td><td data-zh="iterative cluster + soft-kmeans" data-en="Iterative clustering + soft k-means">soft k-means</td><td data-zh="速度極快、Seurat / Scanpy 內建" data-en="Very fast, built into Seurat / Scanpy">速度王</td></tr>
+<tr><td><strong>scVI / scANVI</strong></td><td>scRNA</td><td data-zh="VAE 變分推論" data-en="Variational autoencoder">VAE</td><td data-zh="生成模型，後驗 uncertainty；scanvi 支援 semi-supervised" data-en="Generative; posterior uncertainty; scANVI is semi-supervised">VAE</td></tr>
+<tr><td><strong>Scanorama</strong></td><td>scRNA</td><td data-zh="mutual nearest neighbors" data-en="Mutual nearest neighbors">MNN</td><td data-zh="批次間 panorama stitching、超大 cohort" data-en="Panorama stitching; very large cohorts">大 cohort</td></tr>
+<tr><td><strong>fastMNN / batchelor</strong></td><td>scRNA</td><td>MNN</td><td data-zh="Bioconductor 生態" data-en="Bioconductor ecosystem">R 經典</td></tr>
+<tr><td><strong>BBKNN</strong></td><td>scRNA</td><td data-zh="batch-balanced KNN" data-en="Batch-balanced KNN">batch-aware KNN</td><td data-zh="極輕量、與 Scanpy 整合" data-en="Lightweight; pairs with Scanpy">輕量</td></tr>
+<tr><td><strong>SERRF / NOMIS</strong></td><td>Metabolomics</td><td data-zh="QC-based 機器學習" data-en="QC-based ML">QC-based</td><td data-zh="LC-MS drift 校正主流" data-en="LC-MS drift correction standard">LC-MS</td></tr>
+</tbody></table>
+<div class="callout tip"><span class="callout-icon">💡</span><div>
+<span data-lang="zh"><strong>2024-2025 benchmark：</strong>Nature Methods 2025 多工作基準顯示，scRNA 場景 Harmony 與 scVI/scANVI 都在前段班；小 cohort 用 Harmony 速度極佳，大 atlas (100k+) 偏好 scVI；當需要 transfer label 用 scANVI。</span>
+<span data-lang="en"><strong>2024-2025 benchmarks:</strong> Nature Methods 2025 multitask benchmark shows Harmony and scVI/scANVI lead for scRNA; small cohorts → Harmony for speed, large atlases (100k+) → scVI; for label transfer prefer scANVI.</span>
+</div></div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="評估" data-en="EVALUATION">評估</h2>
+<h2 data-zh="三、整合品質如何評估？" data-en="III. How to Evaluate Integration Quality?">三、評估指標</h2>
+<div data-lang="zh"><p>good integration = <strong>mix batches</strong>（同細胞型態跨批次混在一起） + <strong>preserve biology</strong>（不同細胞型態保持分開）。常用：</p>
+<ul><li><strong>kBET</strong>：批次混合的 K-test。</li><li><strong>LISI</strong>（iLISI 看 batch mixing、cLISI 看 cell-type purity）。</li><li><strong>ASW (Avg silhouette width)</strong>：以 cell-type 與 batch 為標籤分別計算。</li><li><strong>scIB / scib-metrics</strong>（Luecken 2022 NBT）：整合 14 個指標，產生 overall score。</li></ul></div>
+<div data-lang="en"><p>Good integration = <strong>mix batches</strong> (same cell types across batches blend) + <strong>preserve biology</strong> (different cell types stay apart). Standard metrics:</p>
+<ul><li><strong>kBET</strong>: K-test for batch mixing.</li><li><strong>LISI</strong> (iLISI for batch mixing, cLISI for cell-type purity).</li><li><strong>ASW</strong> (Avg silhouette width) labeled by cell type or batch.</li><li><strong>scIB / scib-metrics</strong> (Luecken 2022 NBT): aggregates 14 metrics into one score.</li></ul></div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="互動" data-en="INTERACTIVE">互動</h2>
+<h2 data-zh="四、Harmony 整合視覺化" data-en="IV. Harmony Integration Sim">四、整合視覺化</h2>
+<div class="interactive-panel">
+<div class="sim-stats"><span class="sim-stat pass" id="hkBET">kBET-mixing: —</span><span class="sim-stat warn" id="hcLisi">cLISI: —</span></div>
+<div class="slider-group"><label><span data-zh="整合強度 (theta)" data-en="Integration strength (theta)">theta</span><span id="htV">2.0</span></label><input type="range" id="ht" min="0" max="6" value="2" step="0.1"></div>
+<canvas id="hCv" style="background:var(--c-surface-alt);border-radius:8px;width:100%;height:280px"></canvas>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="程式碼" data-en="CODE">程式碼</div>
+<h2 data-zh="五、ComBat / Harmony / scVI 實作" data-en="V. ComBat / Harmony / scVI Code">五、實作</h2>
+<div class="code-tabs"><div class="code-tab-btns"><button class="code-tab-btn active" onclick="switchTab(this,'r1')">R / ComBat & Harmony</button><button class="code-tab-btn" onclick="switchTab(this,'py1')">Python / Scanpy + Harmony</button><button class="code-tab-btn" onclick="switchTab(this,'py2')">Python / scVI</button></div>
+<div class="code-tab-content active" id="r1"><pre><span class="comment"># Bulk RNA：ComBat-seq 直接吃 counts</span>
+<span class="func">library</span>(sva)
+adj &lt;- <span class="func">ComBat_seq</span>(counts, batch=pheno$batch, group=pheno$condition)
+<span class="comment"># 然後再進 DESeq2</span>
+
+<span class="comment"># scRNA：Harmony with Seurat</span>
+<span class="func">library</span>(Seurat); <span class="func">library</span>(harmony)
+merged &lt;- <span class="func">merge</span>(list_seurat_obj) |&gt;
+          <span class="func">NormalizeData</span>() |&gt; <span class="func">FindVariableFeatures</span>() |&gt;
+          <span class="func">ScaleData</span>() |&gt; <span class="func">RunPCA</span>() |&gt;
+          <span class="func">RunHarmony</span>(group.by.vars=<span class="str">"sample_id"</span>, theta=<span class="num">2</span>)
+merged &lt;- <span class="func">RunUMAP</span>(merged, reduction=<span class="str">"harmony"</span>, dims=<span class="num">1</span>:<span class="num">30</span>) |&gt;
+          <span class="func">FindNeighbors</span>(reduction=<span class="str">"harmony"</span>, dims=<span class="num">1</span>:<span class="num">30</span>) |&gt;
+          <span class="func">FindClusters</span>(algorithm=<span class="num">4</span>)</pre></div>
+<div class="code-tab-content" id="py1"><pre><span class="comment"># Scanpy + Harmony</span>
+<span class="kw">import</span> scanpy <span class="kw">as</span> sc, scanpy.external <span class="kw">as</span> sce
+sc.pp.<span class="func">pca</span>(adata, n_comps=<span class="num">50</span>)
+sce.pp.<span class="func">harmony_integrate</span>(adata, key=<span class="str">"sample_id"</span>, theta=<span class="num">2</span>)
+sc.pp.<span class="func">neighbors</span>(adata, use_rep=<span class="str">"X_pca_harmony"</span>)
+sc.tl.<span class="func">umap</span>(adata); sc.tl.<span class="func">leiden</span>(adata, resolution=<span class="num">0.5</span>)
+
+<span class="comment"># 評估</span>
+<span class="kw">from</span> scib_metrics.benchmark <span class="kw">import</span> Benchmarker
+bm = <span class="func">Benchmarker</span>(adata, batch_key=<span class="str">"sample_id"</span>, label_key=<span class="str">"cell_type"</span>,
+                 embedding_obsm_keys=[<span class="str">"X_pca"</span>, <span class="str">"X_pca_harmony"</span>])
+bm.<span class="func">benchmark</span>(); bm.<span class="func">plot_results_table</span>()</pre></div>
+<div class="code-tab-content" id="py2"><pre><span class="comment"># scVI / scANVI — 大 atlas 主流</span>
+<span class="kw">import</span> scvi
+scvi.model.SCVI.<span class="func">setup_anndata</span>(adata, batch_key=<span class="str">"sample_id"</span>,
+                              continuous_covariate_keys=[<span class="str">"pct_mito"</span>])
+model = scvi.model.<span class="func">SCVI</span>(adata, n_layers=<span class="num">2</span>, n_latent=<span class="num">30</span>)
+model.<span class="func">train</span>(max_epochs=<span class="num">200</span>)
+adata.obsm[<span class="str">"X_scVI"</span>] = model.<span class="func">get_latent_representation</span>()
+
+<span class="comment"># scANVI — 含 label transfer</span>
+scvi.model.SCANVI.<span class="func">setup_anndata</span>(adata, batch_key=<span class="str">"sample_id"</span>,
+                                labels_key=<span class="str">"cell_type"</span>, unlabeled_category=<span class="str">"unknown"</span>)
+scanvi_model = scvi.model.<span class="func">SCANVI</span>(adata)
+scanvi_model.<span class="func">train</span>(max_epochs=<span class="num">100</span>)</pre></div>
+</div>
+</section>
+
+<section class="quiz-section">
+<h3>📝 <span data-zh="自我檢測" data-en="Self-Check">自我檢測</span></h3>
+<div class="quiz-q" data-answer="2" data-exp-zh="ComBat-seq 直接吃 raw counts 並處理 NB distribution，是 bulk RNA-seq 批次校正主流。" data-exp-en="ComBat-seq takes raw counts under NB distribution — the mainstream bulk RNA-seq batch correction.">
+<p data-lang="zh">1. Bulk RNA-seq counts 矩陣的批次校正首選？</p>
+<p data-lang="en">1. First-choice batch correction for bulk RNA-seq counts?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">Harmony</div><div class="quiz-opt" data-idx="1">scVI</div><div class="quiz-opt" data-idx="2">ComBat-seq</div><div class="quiz-opt" data-idx="3">Bismark</div>
+</div><div class="quiz-feedback"></div></div>
+<div class="quiz-q" data-answer="1" data-exp-zh="scIB / scib-metrics (Luecken 2022 NBT) 是公認的單細胞整合 benchmark 框架。" data-exp-en="scIB / scib-metrics (Luecken 2022 NBT) is the accepted single-cell integration benchmark framework.">
+<p data-lang="zh">2. 公認的單細胞整合 benchmark 框架？</p>
+<p data-lang="en">2. The accepted single-cell integration benchmark framework?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">DESeq2</div><div class="quiz-opt" data-idx="1">scIB</div><div class="quiz-opt" data-idx="2">SURVIVOR</div><div class="quiz-opt" data-idx="3">XCMS</div>
+</div><div class="quiz-feedback"></div></div>
+<div class="quiz-q" data-answer="3" data-exp-zh="Harmony 用 iterative soft k-means，速度與 Seurat / Scanpy ecosystem 整合度極佳。" data-exp-en="Harmony uses iterative soft k-means; fast and tightly integrated with Seurat / Scanpy.">
+<p data-lang="zh">3. 小到中型 scRNA cohort 想兼顧速度與品質，最常見的整合工具？</p>
+<p data-lang="en">3. For small/medium scRNA cohorts balancing speed and quality, the most common tool?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">DeepVariant</div><div class="quiz-opt" data-idx="1">DESeq2</div><div class="quiz-opt" data-idx="2">Mutect2</div><div class="quiz-opt" data-idx="3">Harmony</div>
+</div><div class="quiz-feedback"></div></div>
+</section>
+
+<nav class="page-nav">
+<a href="13-metabolomics.html"><span class="nav-dir" data-zh="← 上一章" data-en="← Prev">← 上一章</span><span class="nav-title" data-zh="Ch 13 · 代謝體 (Metabolomics)" data-en="Ch 13 · Metabolomics">Ch 13 · 代謝體 (Metabolomics)</span></a>
+<a href="15-multiomics-integration.html"><span class="nav-dir" data-zh="下一章 →" data-en="Next →">下一章 →</span><span class="nav-title" data-zh="Ch 15 · 多體學垂直整合" data-en="Ch 15 · Multi-Omics Vertical Integration">Ch 15 · 多體學垂直整合</span></a>
+</nav>
+</main>
+
+<footer class="site-footer">© Charlene — HTBA Interactive Tutorial</footer>
+<script src="i18n.js"></script>
+<script>
+window.addEventListener('scroll',()=>{const h=document.documentElement;document.getElementById('progressBar').style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100+'%';});
+function switchTab(b,id){const p=b.closest('.code-tabs');p.querySelectorAll('.code-tab-btn').forEach(x=>x.classList.remove('active'));p.querySelectorAll('.code-tab-content').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById(id).classList.add('active');}
+document.querySelectorAll('.quiz-q').forEach(q=>{const ans=+q.dataset.answer;q.querySelectorAll('.quiz-opt').forEach(o=>{o.onclick=()=>{if(q.dataset.done)return;q.dataset.done=1;const i=+o.dataset.idx,fb=q.querySelector('.quiz-feedback');q.querySelectorAll('.quiz-opt').forEach(x=>{if(+x.dataset.idx===ans)x.classList.add('correct');else if(+x.dataset.idx===i)x.classList.add('wrong');});if(i===ans){fb.className='quiz-feedback show correct-fb';fb.textContent='✓ '+(window.I18n&&window.I18n.get()==='en'?q.dataset.expEn:q.dataset.expZh);}else{fb.className='quiz-feedback show wrong-fb';fb.textContent='✗ '+(window.I18n&&window.I18n.get()==='en'?q.dataset.expEn:q.dataset.expZh);}};});});
+// Harmony sim
+const cv=document.getElementById('hCv'),ctx=cv.getContext('2d');
+function r(){let u=0,v=0;while(u===0)u=Math.random();while(v===0)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+const pts=[];const trueK=5,nB=3;
+for(let k=0;k<trueK;k++){for(let b=0;b<nB;b++){const cx=80+k*60,cy=70+k*30;const offX=(b-1)*70,offY=(b-1)*55;
+  for(let i=0;i<30;i++)pts.push({k,b,x0:cx+offX+r()*12,y0:cy+offY+r()*10,x:0,y:0});}}
+function draw(){
+  const t=+document.getElementById('ht').value;
+  document.getElementById('htV').textContent=t.toFixed(1);
+  const w=cv.width=cv.offsetWidth,h=cv.height=cv.offsetHeight;
+  ctx.fillStyle='#eef5f7';ctx.fillRect(0,0,w,h);
+  const colors=['#0e7490','#f97316','#7c3aed','#dc2626','#059669'];
+  // strength factor (0=raw, 1=fully aligned)
+  const s=Math.min(1,t/4);
+  pts.forEach(p=>{
+    // each cell type center
+    const cx=80+p.k*70,cy=100+(p.k%2)*70;
+    // batch offset
+    const offX=(p.b-1)*70*(1-s),offY=(p.b-1)*55*(1-s);
+    p.x=cx+offX+(p.x0-(80+p.k*60+(p.b-1)*70))*0.5;
+    p.y=cy+offY+(p.y0-(70+p.k*30+(p.b-1)*55))*0.5;
+    ctx.fillStyle=colors[p.k];
+    ctx.globalAlpha=0.6+0.2*(p.b===0?1:0);
+    ctx.beginPath();ctx.arc(p.x/520*w,p.y/280*h,3,0,Math.PI*2);ctx.fill();
+  });
+  ctx.globalAlpha=1;
+  document.getElementById('hkBET').textContent='Batch mix: '+(s*0.9*100).toFixed(0)+'%';
+  document.getElementById('hcLisi').textContent='cLISI: '+(1-s*0.15).toFixed(2);
+  document.getElementById('hkBET').className='sim-stat '+(s>=0.6?'pass':'warn');
+  document.getElementById('hcLisi').className='sim-stat '+(s<0.8?'pass':'fail');
+}
+document.getElementById('ht').oninput=draw;window.addEventListener('resize',draw);setTimeout(draw,50);
+</script>
+</body></html>

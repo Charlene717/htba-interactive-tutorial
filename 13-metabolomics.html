@@ -1,0 +1,148 @@
+<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Ch 13: 代謝體 — HTBA</title>
+<link rel="stylesheet" href="styles.css">
+</head><body>
+<nav class="top-nav"><div class="top-nav-inner">
+  <a href="index.html" class="top-nav-brand"><span>🧬</span> <span data-zh="高通量分析與整合" data-en="HTBA Tutorial">高通量分析與整合</span></a>
+  <ul class="top-nav-links"><li><a href="01-overview.html">01</a></li><li><a href="02-experimental-design.html">02</a></li><li><a href="03-upstream-pipeline.html">03</a></li><li><a href="04-genomics-variants.html">04</a></li><li><a href="05-structural-variants.html">05</a></li><li><a href="06-atac-cutrun.html">06</a></li><li><a href="07-dna-methylation.html">07</a></li><li><a href="08-bulk-rnaseq.html">08</a></li><li><a href="09-scrnaseq.html">09</a></li><li><a href="10-spatial-omics.html">10</a></li><li><a href="11-long-read-rna.html">11</a></li><li><a href="12-proteomics.html">12</a></li><li><a href="13-metabolomics.html" class="active">13</a></li><li><a href="14-batch-correction.html">14</a></li><li><a href="15-multiomics-integration.html">15</a></li><li><a href="16-spatial-singlecell.html">16</a></li><li><a href="17-functional-enrichment.html">17</a></li><li><a href="18-network-analysis.html">18</a></li><li><a href="19-foundation-models.html">19</a></li><li><a href="20-reproducibility.html">20</a></li>
+    <li><a href="references/index.html" data-zh="📚 參考資料" data-en="📚 References">📚 參考資料</a></li>
+  </ul>
+</div></nav>
+<div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
+
+<header class="page-hero"><div class="step-badge">CH 13 / 20 · BLOCK 4 METABOLOMICS</div>
+<h1 data-zh="代謝體 (Metabolomics)" data-en="Metabolomics">代謝體</h1>
+<p class="subtitle" data-lang="zh">untargeted vs targeted、XCMS、MS-DIAL、MetaboAnalyst — 從 m/z–RT 表到生物學意義。</p>
+<p class="subtitle" data-lang="en">Untargeted vs. targeted, XCMS, MS-DIAL, MetaboAnalyst — from m/z–RT tables to biology.</p>
+</header>
+
+<main class="content-wrap">
+
+<section class="section">
+<div class="section-label" data-zh="兩大策略" data-en="STRATEGIES">兩大策略</h2>
+<h2 data-zh="一、untargeted vs. targeted" data-en="I. Untargeted vs. Targeted">一、兩大策略</h2>
+<div class="card-grid cols-2">
+<div class="card"><h4>🌐 <span data-zh="Untargeted (discovery)" data-en="Untargeted (discovery)">Untargeted</span></h4>
+<div data-lang="zh"><p>全面 scan 所有 m/z，發現未知 feature。產出：m/z × RT × intensity 表，常數千至數萬 feature。<strong>儀器：</strong>Orbitrap、QToF、IM-MS。<strong>挑戰：</strong>多數 feature 無法鑑定（identification rate 常 &lt; 20%）。</p></div>
+<div data-lang="en"><p>Scan all m/z to discover unknown features. Output: m/z × RT × intensity table — thousands to tens of thousands of features. <strong>Instruments:</strong> Orbitrap, QToF, IM-MS. <strong>Challenge:</strong> most features remain unidentified (ID rate often &lt; 20%).</p></div>
+</div>
+<div class="card"><h4>🎯 <span data-zh="Targeted (MRM/PRM)" data-en="Targeted (MRM/PRM)">Targeted</span></h4>
+<div data-lang="zh"><p>預先選擇 10-300 個已知代謝物，用 MRM/PRM 高精度量化。<strong>線性範圍寬、定量準確</strong>，是臨床指標物質的金標準。</p></div>
+<div data-lang="en"><p>Pre-select 10–300 known metabolites; quantify with high precision via MRM/PRM. <strong>Wide linear range, accurate quantification</strong> — gold standard for clinical biomarkers.</p></div>
+</div>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="流程" data-en="WORKFLOW">流程</h2>
+<h2 data-zh="二、untargeted LC-MS 分析流程" data-en="II. Untargeted LC-MS Workflow">二、分析流程</h2>
+<div class="workflow">
+<div class="workflow-step" data-step="1"><h4 data-zh="採樣與前處理" data-en="Sampling & prep">採樣與前處理</h4><p data-lang="zh">紀錄 quench/extract 條件、加 internal standards、隨機化注射順序、每 10 樣本插 pooled QC、blank。</p><p data-lang="en">Record quench/extract conditions, add internal standards, randomize injection order, insert pooled QC every 10 samples plus blanks.</p></div>
+<div class="workflow-step" data-step="2"><h4 data-zh="峰偵測 + 校正" data-en="Peak picking + alignment">峰偵測 + 校正</h4><p data-lang="zh"><strong>XCMS</strong>（R 經典）、<strong>MS-DIAL</strong>（GUI）、<strong>MZmine 3</strong>、<strong>asari</strong>（speed champion 2023）。輸出 feature table。</p><p data-lang="en"><strong>XCMS</strong> (classic R), <strong>MS-DIAL</strong> (GUI), <strong>MZmine 3</strong>, <strong>asari</strong> (speed champion 2023). Output: feature table.</p></div>
+<div class="workflow-step" data-step="3"><h4>QC + normalization</h4><p data-lang="zh">用 pooled QC 監控 RT drift 與 intensity drift；常用 <strong>SERRF</strong>、<strong>QC-RLSC</strong>、<strong>NOMIS</strong> 校正 batch effect。</p><p data-lang="en">Use pooled QC to track RT and intensity drift; <strong>SERRF</strong>, <strong>QC-RLSC</strong>, <strong>NOMIS</strong> for batch correction.</p></div>
+<div class="workflow-step" data-step="4"><h4>Annotation / ID</h4><p data-lang="zh">資料庫：<strong>HMDB v5</strong>、<strong>METLIN</strong>、<strong>GNPS</strong>、<strong>MoNA</strong>。<strong>MSI 信賴度</strong>：L1 (純品標準)、L2 (譜庫匹配)、L3 (類別)、L4 (未知)。深度學習：<strong>SIRIUS 5</strong> + <strong>CSI:FingerID</strong>、<strong>MS2DeepScore</strong>。</p><p data-lang="en">Databases: <strong>HMDB v5</strong>, <strong>METLIN</strong>, <strong>GNPS</strong>, <strong>MoNA</strong>. <strong>MSI levels:</strong> L1 (authentic standard), L2 (library match), L3 (class), L4 (unknown). DL: <strong>SIRIUS 5</strong> + <strong>CSI:FingerID</strong>, <strong>MS2DeepScore</strong>.</p></div>
+<div class="workflow-step" data-step="5"><h4 data-zh="統計與通路" data-en="Stats and pathway">統計與通路</h4><p data-lang="zh"><strong>MetaboAnalyst 6</strong>、<strong>POMA</strong>、<strong>limma</strong>。Pathway：<strong>mummichog</strong>（從 m/z 直接 pathway）、KEGG / Reactome 整合。</p><p data-lang="en"><strong>MetaboAnalyst 6</strong>, <strong>POMA</strong>, <strong>limma</strong>. Pathway: <strong>mummichog</strong> (m/z → pathway directly), KEGG / Reactome integration.</p></div>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="互動" data-en="INTERACTIVE">互動</h2>
+<h2 data-zh="三、MSI 信賴度評估器" data-en="III. MSI Confidence Level Assessor">三、MSI 信賴度</h2>
+<div class="interactive-panel">
+<div class="sim-stats"><span class="sim-stat pass" id="mLv">MSI Level: —</span></div>
+<div id="mBoxes" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin:10px 0"></div>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="程式碼" data-en="CODE">程式碼</div>
+<h2 data-zh="四、XCMS + MetaboAnalyst" data-en="IV. XCMS + MetaboAnalyst">四、實作</h2>
+<div class="code-tabs"><div class="code-tab-btns"><button class="code-tab-btn active" onclick="switchTab(this,'r1')">R / XCMS</button><button class="code-tab-btn" onclick="switchTab(this,'r2')">R / MetaboAnalystR</button><button class="code-tab-btn" onclick="switchTab(this,'py1')">Python / matchms</button></div>
+<div class="code-tab-content active" id="r1"><pre><span class="comment"># XCMS peak picking → alignment → fill</span>
+<span class="func">library</span>(xcms); <span class="func">library</span>(MSnbase)
+files &lt;- <span class="func">list.files</span>(<span class="str">"mzML/"</span>, full.names=<span class="kw">TRUE</span>)
+raw  &lt;- <span class="func">readMSData</span>(files, mode=<span class="str">"onDisk"</span>,
+                  pdata=<span class="func">new</span>(<span class="str">"NAnnotatedDataFrame"</span>, pheno))
+
+cwp  &lt;- <span class="func">CentWaveParam</span>(ppm=<span class="num">15</span>, peakwidth=<span class="func">c</span>(<span class="num">5</span>,<span class="num">25</span>), snthresh=<span class="num">10</span>)
+xset &lt;- <span class="func">findChromPeaks</span>(raw, param=cwp)
+xset &lt;- <span class="func">adjustRtime</span>(xset, param=<span class="func">PeakGroupsParam</span>())
+xset &lt;- <span class="func">groupChromPeaks</span>(xset, param=<span class="func">PeakDensityParam</span>(sampleGroups=pheno$group))
+xset &lt;- <span class="func">fillChromPeaks</span>(xset)
+
+mat &lt;- <span class="func">featureValues</span>(xset, value=<span class="str">"into"</span>)</pre></div>
+<div class="code-tab-content" id="r2"><pre><span class="comment"># MetaboAnalystR — 統計 + pathway</span>
+<span class="func">library</span>(MetaboAnalystR)
+mSet &lt;- <span class="func">InitDataObjects</span>(<span class="str">"pktable"</span>, <span class="str">"stat"</span>, <span class="kw">FALSE</span>)
+mSet &lt;- <span class="func">Read.TextData</span>(mSet, <span class="str">"feature_table.csv"</span>, <span class="str">"rowu"</span>, <span class="str">"disc"</span>)
+mSet &lt;- <span class="func">SanityCheckData</span>(mSet) |&gt;
+        <span class="func">ReplaceMin</span>() |&gt; <span class="func">Normalization</span>(<span class="str">"NULL"</span>, <span class="str">"LogNorm"</span>, <span class="str">"ParetoNorm"</span>)
+
+mSet &lt;- <span class="func">PCA.Anal</span>(mSet)
+mSet &lt;- <span class="func">PLSR.Anal</span>(mSet)
+mSet &lt;- <span class="func">Volcano.Anal</span>(mSet, fcthresh=<span class="num">2</span>, alpha=<span class="num">0.05</span>)
+<span class="comment"># Pathway from m/z 直接（mummichog）</span>
+mSet &lt;- <span class="func">PerformMummichog</span>(mSet, <span class="str">"hsa_kegg"</span>, <span class="num">10</span>, <span class="str">"negative"</span>)</pre></div>
+<div class="code-tab-content" id="py1"><pre><span class="comment"># matchms / SIRIUS — Python spectral matching</span>
+<span class="kw">from</span> matchms.importing <span class="kw">import</span> load_from_msp
+<span class="kw">from</span> matchms.similarity <span class="kw">import</span> CosineGreedy
+<span class="kw">from</span> matchms <span class="kw">import</span> calculate_scores
+
+queries = <span class="func">list</span>(load_from_msp(<span class="str">"queries.msp"</span>))
+refs    = <span class="func">list</span>(load_from_msp(<span class="str">"hmdb_lib.msp"</span>))
+scores  = <span class="func">calculate_scores</span>(refs, queries, CosineGreedy(tolerance=<span class="num">0.01</span>))
+
+<span class="kw">for</span> q <span class="kw">in</span> queries[:<span class="num">5</span>]:
+    top = scores.<span class="func">scores_by_query</span>(q, sort=<span class="kw">True</span>)[:<span class="num">3</span>]
+    <span class="kw">for</span> r, s <span class="kw">in</span> top: <span class="func">print</span>(r.metadata[<span class="str">"compound_name"</span>], s)</pre></div>
+</div>
+</section>
+
+<section class="quiz-section">
+<h3>📝 <span data-zh="自我檢測" data-en="Self-Check">自我檢測</span></h3>
+<div class="quiz-q" data-answer="0" data-exp-zh="MSI Level 1 需用「純品標準」在同一儀器確認 m/z、RT、MS2 譜圖。" data-exp-en="MSI Level 1 requires authentic standard run on the same instrument matching m/z, RT, and MS2.">
+<p data-lang="zh">1. MSI 信賴度 Level 1 (最高) 的條件？</p>
+<p data-lang="en">1. Condition for MSI confidence Level 1 (highest)?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0"><span data-lang="zh">純品標準同儀器比對</span><span data-lang="en">Authentic standard on same instrument</span></div><div class="quiz-opt" data-idx="1"><span data-lang="zh">線上譜庫匹配</span><span data-lang="en">Online library match</span></div><div class="quiz-opt" data-idx="2"><span data-lang="zh">化合物類別猜測</span><span data-lang="en">Class guess</span></div><div class="quiz-opt" data-idx="3"><span data-lang="zh">完全未知</span><span data-lang="en">Unknown</span></div>
+</div><div class="quiz-feedback"></div></div>
+<div class="quiz-q" data-answer="2" data-exp-zh="mummichog 把 m/z 直接 mapping 到 pathway，跳過 metabolite identification 步驟。" data-exp-en="mummichog maps m/z directly to pathways, bypassing metabolite ID.">
+<p data-lang="zh">2. 不做 metabolite ID，直接從 m/z 推 pathway 的方法？</p>
+<p data-lang="en">2. Method that infers pathways directly from m/z without metabolite ID?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">XCMS</div><div class="quiz-opt" data-idx="1">DIA-NN</div><div class="quiz-opt" data-idx="2">mummichog</div><div class="quiz-opt" data-idx="3">CNVkit</div>
+</div><div class="quiz-feedback"></div></div>
+<div class="quiz-q" data-answer="1" data-exp-zh="pooled QC 是 metabolomics cohort 監控 LC-MS drift 的標準作法，每 5-10 樣本插入一次。" data-exp-en="Pooled QC every 5–10 samples is standard for monitoring LC-MS drift in metabolomics cohorts.">
+<p data-lang="zh">3. metabolomics cohort 中監控儀器 drift 最常用的策略？</p>
+<p data-lang="en">3. Most common strategy to monitor instrument drift in metabolomics cohorts?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0"><span data-lang="zh">不需要</span><span data-lang="en">Not needed</span></div><div class="quiz-opt" data-idx="1"><span data-lang="zh">每 5-10 樣本插 pooled QC</span><span data-lang="en">Insert pooled QC every 5–10 samples</span></div><div class="quiz-opt" data-idx="2"><span data-lang="zh">只校正前 5 個樣本</span><span data-lang="en">Calibrate only the first 5 samples</span></div><div class="quiz-opt" data-idx="3"><span data-lang="zh">用 GWAS chip 校正</span><span data-lang="en">Use a GWAS chip</span></div>
+</div><div class="quiz-feedback"></div></div>
+</section>
+
+<nav class="page-nav">
+<a href="12-proteomics.html"><span class="nav-dir" data-zh="← 上一章" data-en="← Prev">← 上一章</span><span class="nav-title" data-zh="Ch 12 · 蛋白質體 (Proteomics)" data-en="Ch 12 · Proteomics">Ch 12 · 蛋白質體 (Proteomics)</span></a>
+<a href="14-batch-correction.html"><span class="nav-dir" data-zh="下一章 →" data-en="Next →">下一章 →</span><span class="nav-title" data-zh="Ch 14 · 批次效應與水平整合" data-en="Ch 14 · Batch Effects &amp; Horizontal Integration">Ch 14 · 批次效應與水平整合</span></a>
+</nav>
+</main>
+
+<footer class="site-footer">© Charlene — HTBA Interactive Tutorial</footer>
+<script src="i18n.js"></script>
+<script>
+window.addEventListener('scroll',()=>{const h=document.documentElement;document.getElementById('progressBar').style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100+'%';});
+function switchTab(b,id){const p=b.closest('.code-tabs');p.querySelectorAll('.code-tab-btn').forEach(x=>x.classList.remove('active'));p.querySelectorAll('.code-tab-content').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById(id).classList.add('active');}
+document.querySelectorAll('.quiz-q').forEach(q=>{const ans=+q.dataset.answer;q.querySelectorAll('.quiz-opt').forEach(o=>{o.onclick=()=>{if(q.dataset.done)return;q.dataset.done=1;const i=+o.dataset.idx,fb=q.querySelector('.quiz-feedback');q.querySelectorAll('.quiz-opt').forEach(x=>{if(+x.dataset.idx===ans)x.classList.add('correct');else if(+x.dataset.idx===i)x.classList.add('wrong');});if(i===ans){fb.className='quiz-feedback show correct-fb';fb.textContent='✓ '+(window.I18n&&window.I18n.get()==='en'?q.dataset.expEn:q.dataset.expZh);}else{fb.className='quiz-feedback show wrong-fb';fb.textContent='✗ '+(window.I18n&&window.I18n.get()==='en'?q.dataset.expEn:q.dataset.expZh);}};});});
+// MSI sim
+const MSI=[{id:'std',zh:'純品標準同儀器確認',en:'Authentic standard on same instrument'},{id:'rt',zh:'保留時間匹配',en:'Retention time match'},{id:'ms2',zh:'MS2 譜圖匹配',en:'MS2 spectrum match'},{id:'mass',zh:'精確質量 (ppm < 5) 匹配',en:'Accurate mass (ppm < 5) match'},{id:'lib',zh:'線上譜庫匹配 (HMDB/METLIN)',en:'Online library match (HMDB/METLIN)'},{id:'class',zh:'僅能判定化合物類別',en:'Compound class only'}];
+const w=document.getElementById('mBoxes');
+MSI.forEach(e=>{const l=document.createElement('label');l.style.cssText='display:flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid var(--c-border-light);border-radius:6px;cursor:pointer;font-size:.84rem;background:var(--c-surface)';const cb=document.createElement('input');cb.type='checkbox';cb.dataset.id=e.id;cb.onchange=upd;const s1=document.createElement('span');s1.dataset.lang='zh';s1.textContent=e.zh;const s2=document.createElement('span');s2.dataset.lang='en';s2.textContent=e.en;s2.style.display='none';l.append(cb,s1,s2);w.append(l);});
+function upd(){const set=new Set(Array.from(document.querySelectorAll('#mBoxes input:checked')).map(x=>x.dataset.id));
+  let lvl='Level 4 — Unknown', cl='fail';
+  if(set.has('std')&&set.has('rt')&&set.has('ms2'))(lvl='Level 1 — Definitive',cl='pass');
+  else if((set.has('ms2')||set.has('lib'))&&set.has('mass'))(lvl='Level 2 — Putative',cl='warn');
+  else if(set.has('class'))(lvl='Level 3 — Class only',cl='warn');
+  document.getElementById('mLv').textContent=lvl;document.getElementById('mLv').className='sim-stat '+cl;
+}
+upd();document.addEventListener('langchange',e=>{const l=e.detail.lang;document.querySelectorAll('#mBoxes [data-lang]').forEach(s=>s.style.display=s.dataset.lang===l?'':'none');});
+</script>
+</body></html>
