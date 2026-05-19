@@ -1,0 +1,179 @@
+<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Ch 10: 空間轉錄組 — HTBA</title>
+<link rel="stylesheet" href="styles.css">
+</head><body>
+<nav class="top-nav"><div class="top-nav-inner">
+  <a href="index.html" class="top-nav-brand"><span>🧬</span> <span data-zh="高通量分析與整合" data-en="HTBA Tutorial">高通量分析與整合</span></a>
+  <ul class="top-nav-links">
+    <li><a href="01-overview.html">01</a></li><li><a href="02-experimental-design.html">02</a></li><li><a href="03-upstream-pipeline.html">03</a></li><li><a href="04-genomics-variants.html">04</a></li><li><a href="05-structural-variants.html">05</a></li><li><a href="06-atac-cutrun.html">06</a></li><li><a href="07-dna-methylation.html">07</a></li><li><a href="08-bulk-rnaseq.html">08</a></li><li><a href="09-scrnaseq.html">09</a></li><li><a href="10-spatial-omics.html" class="active">10</a></li><li><a href="11-long-read-rna.html">11</a></li><li><a href="12-proteomics.html">12</a></li><li><a href="13-metabolomics.html">13</a></li><li><a href="14-batch-correction.html">14</a></li><li><a href="15-multiomics-integration.html">15</a></li><li><a href="16-spatial-singlecell.html">16</a></li><li><a href="17-functional-enrichment.html">17</a></li><li><a href="18-network-analysis.html">18</a></li><li><a href="19-foundation-models.html">19</a></li><li><a href="20-reproducibility.html">20</a></li>
+    <li><a href="references/index.html" data-zh="📚 參考資料" data-en="📚 References">📚 參考資料</a></li>
+  </ul>
+</div></nav>
+<div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
+
+<header class="page-hero"><div class="step-badge">CH 10 / 20 · BLOCK 3 TRANSCRIPTOMICS</div>
+<h1 data-zh="空間轉錄組 (Spatial)" data-en="Spatial Transcriptomics">空間轉錄組</h1>
+<p class="subtitle" data-lang="zh">Visium HD、Xenium、Stereo-seq、Slide-seq — 2025 平台對照 + 空間統計與 deconvolution。</p>
+<p class="subtitle" data-lang="en">Visium HD, Xenium, Stereo-seq, Slide-seq — 2025 platform overview + spatial statistics + deconvolution.</p>
+</header>
+
+<main class="content-wrap">
+
+<section class="section">
+<div class="section-label" data-zh="兩大派別" data-en="TWO FAMILIES">兩大派別</h2>
+<h2 data-zh="一、Sequencing-based vs. Imaging-based" data-en="I. Sequencing-based vs. Imaging-based">一、兩大派別</h2>
+<div class="card-grid cols-2">
+<div class="card"><h4>📚 <span data-zh="Sequencing-based" data-en="Sequencing-based">Sequencing-based</span></h4>
+<div data-lang="zh"><p>把空間 barcode 印在玻片上，捕獲組織的 mRNA、做 NGS。<strong>全轉錄組</strong>、解析度由 spot/bin 大小決定。代表：<strong>Visium / Visium HD</strong>、<strong>Stereo-seq</strong>、<strong>Slide-seq v2</strong>、<strong>DBiT-seq</strong>。</p></div>
+<div data-lang="en"><p>Spatial barcodes printed on a slide capture tissue mRNA, then NGS. <strong>Whole-transcriptome</strong>, resolution set by spot/bin size. Representatives: <strong>Visium / Visium HD</strong>, <strong>Stereo-seq</strong>, <strong>Slide-seq v2</strong>, <strong>DBiT-seq</strong>.</p></div>
+</div>
+<div class="card"><h4>🔍 <span data-zh="Imaging-based" data-en="Imaging-based">Imaging-based</span></h4>
+<div data-lang="zh"><p>在原位以螢光探針偵測目標基因（padlock probe / branched DNA）。<strong>單細胞 / 亞細胞解析度</strong>、但只能偵測預先設計的 panel（百到千個基因）。代表：<strong>Xenium / Xenium Prime 5K</strong>、<strong>MERSCOPE</strong>、<strong>CosMx</strong>、<strong>seqFISH+</strong>。</p></div>
+<div data-lang="en"><p>In-situ detection with fluorescent probes (padlock or branched DNA). <strong>Single-cell / subcellular</strong> resolution but limited to pre-designed panels (hundreds to thousands of genes). Representatives: <strong>Xenium / Xenium Prime 5K</strong>, <strong>MERSCOPE</strong>, <strong>CosMx</strong>, <strong>seqFISH+</strong>.</p></div>
+</div>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="2025 平台" data-en="2025 PLATFORMS">2025 平台</h2>
+<h2 data-zh="二、2025 主流平台對照" data-en="II. 2025 Mainstream Platform Comparison">二、平台對照</h2>
+<table class="comp-table">
+<thead><tr><th>Platform</th><th data-zh="解析度" data-en="Resolution">解析度</th><th data-zh="基因數" data-en="Genes">基因</th><th data-zh="面積" data-en="Area">面積</th><th data-zh="特性" data-en="Notes">特性</th></tr></thead>
+<tbody>
+<tr><td><strong>Visium HD (2024)</strong></td><td>2 µm bin → 8 µm / 16 µm</td><td data-zh="全轉錄組" data-en="Whole-transcriptome">全轉錄組</td><td>6.5×6.5 mm</td><td data-zh="FFPE 支援、廣泛採用" data-en="FFPE support, widely adopted">FFPE、主流</td></tr>
+<tr><td><strong>Xenium Prime 5K (2024)</strong></td><td data-zh="亞細胞 (~0.2 µm)" data-en="Subcellular (~0.2 µm)">亞細胞</td><td>~5,000</td><td>12×24 mm</td><td data-zh="高敏感度 padlock probe" data-en="High sensitivity padlock probe">高敏感度</td></tr>
+<tr><td><strong>Stereo-seq</strong></td><td>220 nm spot, 500 nm spacing</td><td data-zh="全轉錄組" data-en="Whole-transcriptome">全轉錄組</td><td>10×10 mm</td><td data-zh="MGI 平台、最大面積" data-en="MGI platform, largest area">最大 FOV</td></tr>
+<tr><td><strong>MERSCOPE</strong></td><td data-zh="單細胞" data-en="Single-cell">單細胞</td><td>140-1000</td><td>1×1.5 cm</td><td>MERFISH</td></tr>
+<tr><td><strong>CosMx 6K (2024)</strong></td><td data-zh="亞細胞" data-en="Subcellular">亞細胞</td><td>6,175</td><td>4 mm²</td><td data-zh="NanoString、含 NSC 蛋白" data-en="NanoString, with protein panel">含蛋白</td></tr>
+</tbody></table>
+<div class="callout tip"><span class="callout-icon">💡</span><div>
+<span data-lang="zh"><strong>選型法則（2025 benchmark）：</strong>想要「整片組織 + 全轉錄組」用 Visium HD / Stereo-seq；想要「亞細胞 + 已知 panel」用 Xenium。Xenium 每基因敏感度約為 Visium HD 的 3.18×；Visium HD 偵測到的基因總數更多。常見策略：在同一張連續切片上做 Visium HD（廣度）+ Xenium（深度）兩者整合（見 Ch 16）。</span>
+<span data-lang="en"><strong>Selection rule (2025 benchmarks):</strong> Whole tissue + whole-transcriptome → Visium HD / Stereo-seq; subcellular + known panel → Xenium. Per-gene sensitivity of Xenium ≈ 3.18× Visium HD; total gene detection is higher with Visium HD. Common strategy: Visium HD (breadth) + Xenium (depth) on serial sections, integrated via methods in Ch 16.</span>
+</div></div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="分析流程" data-en="ANALYSIS">分析流程</h2>
+<h2 data-zh="三、空間轉錄組分析五步驟" data-en="III. Spatial Analysis in Five Steps">三、分析流程</h2>
+<div class="workflow">
+<div class="workflow-step" data-step="1"><h4>Upstream</h4><p data-lang="zh">Visium → <strong>Space Ranger</strong>；Xenium → <strong>Xenium Onboard Analysis</strong>；Stereo-seq → <strong>SAW</strong>。輸出：spot/cell × gene matrix + 空間座標 + H&amp;E 影像。</p><p data-lang="en">Visium → <strong>Space Ranger</strong>; Xenium → <strong>Xenium Onboard Analysis</strong>; Stereo-seq → <strong>SAW</strong>. Output: spot/cell × gene matrix + spatial coords + H&E image.</p></div>
+<div class="workflow-step" data-step="2"><h4>QC + Normalization</h4><p data-lang="zh">SCTransform 或 sctransform-spatial。注意：含 anatomical 結構的組織會有強空間 autocorrelation，是訊號不是 batch 效應。</p><p data-lang="en">SCTransform or sctransform-spatial. Note: tissues with anatomical structure show strong spatial autocorrelation — that's signal, not batch.</p></div>
+<div class="workflow-step" data-step="3"><h4 data-zh="Spatial domain" data-en="Spatial domain">空間 domain</h4><p data-lang="zh"><strong>BayesSpace</strong>、<strong>SpaGCN</strong>、<strong>STAGATE</strong>、<strong>GraphST</strong>（2023）— 結合 expression + 空間鄰居找出組織 domain。</p><p data-lang="en"><strong>BayesSpace</strong>, <strong>SpaGCN</strong>, <strong>STAGATE</strong>, <strong>GraphST</strong> (2023) — combine expression + spatial neighbors to find tissue domains.</p></div>
+<div class="workflow-step" data-step="4"><h4 data-zh="空間變異基因 (SVG)" data-en="Spatially variable genes">SVG</h4><p data-lang="zh"><strong>SpatialDE</strong>、<strong>SPARK / SPARK-X</strong>、<strong>nnSVG</strong>（2023）— 找有空間 pattern 的基因，類似 HVG 但加上空間統計。</p><p data-lang="en"><strong>SpatialDE</strong>, <strong>SPARK / SPARK-X</strong>, <strong>nnSVG</strong> (2023) — find genes with spatial pattern; like HVGs but spatial-aware.</p></div>
+<div class="workflow-step" data-step="5"><h4 data-zh="Deconvolution / 整合 scRNA" data-en="Deconvolution / scRNA integration">Deconvolution</h4><p data-lang="zh">Visium 一個 spot 涵蓋多個細胞，需用 <strong>cell2location</strong>、<strong>RCTD</strong>、<strong>SPOTlight</strong>、<strong>Tangram</strong> 推估細胞型態比例。詳見 Ch 16。</p><p data-lang="en">Visium spots cover multiple cells — use <strong>cell2location</strong>, <strong>RCTD</strong>, <strong>SPOTlight</strong>, <strong>Tangram</strong> to estimate cell-type fractions. See Ch 16.</p></div>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="互動：解析度" data-en="INTERACTIVE">互動</h2>
+<h2 data-zh="四、解析度 × 面積選型助手" data-en="IV. Resolution × Area Selector">四、選型助手</h2>
+<div class="interactive-panel">
+<div class="sim-stats"><span class="sim-stat pass" id="spRec">Recommended: —</span></div>
+<div class="slider-group"><label><span data-zh="目標解析度 (µm)" data-en="Target resolution (µm)">解析度 (µm)</span><span id="spRv">8</span></label><input type="range" id="spR" min="0.2" max="55" value="8" step="0.5"></div>
+<div class="slider-group"><label><span data-zh="樣本面積 (mm²)" data-en="Sample area (mm²)">面積 (mm²)</span><span id="spAv">42</span></label><input type="range" id="spA" min="1" max="200" value="42" step="1"></div>
+<div class="slider-group"><label><span data-zh="關鍵：需要全轉錄組？" data-en="Whole-transcriptome required?">全轉錄組？</span><span id="spWv">Yes</span></label><input type="range" id="spW" min="0" max="1" value="1" step="1"></div>
+<div id="spOutput" style="margin-top:14px;font-size:.92rem;color:var(--c-ink-light);background:var(--c-surface-alt);padding:14px;border-radius:8px"></div>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="程式碼" data-en="CODE">程式碼</div>
+<h2 data-zh="五、Squidpy / Seurat / Giotto" data-en="V. Squidpy / Seurat / Giotto">五、實作</h2>
+<div class="code-tabs"><div class="code-tab-btns"><button class="code-tab-btn active" onclick="switchTab(this,'py1')">Python / Squidpy</button><button class="code-tab-btn" onclick="switchTab(this,'r1')">R / Seurat spatial</button><button class="code-tab-btn" onclick="switchTab(this,'r2')">R / Giotto suite</button></div>
+<div class="code-tab-content active" id="py1"><pre><span class="comment"># Squidpy（與 Scanpy 整合）</span>
+<span class="kw">import</span> scanpy <span class="kw">as</span> sc, squidpy <span class="kw">as</span> sq
+adata = sq.datasets.<span class="func">visium</span>(<span class="str">"V1_Mouse_Brain"</span>)
+
+<span class="comment"># QC + 標準預處理</span>
+sc.pp.<span class="func">filter_cells</span>(adata, min_counts=<span class="num">500</span>)
+sc.pp.<span class="func">normalize_total</span>(adata); sc.pp.<span class="func">log1p</span>(adata)
+sc.pp.<span class="func">highly_variable_genes</span>(adata, n_top_genes=<span class="num">2000</span>)
+sc.pp.<span class="func">scale</span>(adata); sc.tl.<span class="func">pca</span>(adata)
+sc.pp.<span class="func">neighbors</span>(adata); sc.tl.<span class="func">leiden</span>(adata, resolution=<span class="num">0.6</span>)
+
+<span class="comment"># 空間關係 + SVG</span>
+sq.gr.<span class="func">spatial_neighbors</span>(adata, coord_type=<span class="str">"generic"</span>)
+sq.gr.<span class="func">nhood_enrichment</span>(adata, cluster_key=<span class="str">"leiden"</span>)
+sq.gr.<span class="func">spatial_autocorr</span>(adata, mode=<span class="str">"moran"</span>)    <span class="comment"># Moran's I</span>
+sq.pl.<span class="func">spatial_scatter</span>(adata, color=[<span class="str">"leiden"</span>, <span class="str">"total_counts"</span>])</pre></div>
+<div class="code-tab-content" id="r1"><pre><span class="comment"># Seurat spatial workflow（Visium）</span>
+<span class="func">library</span>(Seurat)
+brain &lt;- <span class="func">Load10X_Spatial</span>(<span class="str">"V1_Adult_Mouse_Brain/"</span>)
+brain &lt;- <span class="func">SCTransform</span>(brain, assay=<span class="str">"Spatial"</span>)
+brain &lt;- <span class="func">RunPCA</span>(brain) |&gt; <span class="func">FindNeighbors</span>(dims=<span class="num">1</span>:<span class="num">30</span>) |&gt;
+         <span class="func">FindClusters</span>(resolution=<span class="num">0.5</span>) |&gt; <span class="func">RunUMAP</span>(dims=<span class="num">1</span>:<span class="num">30</span>)
+
+<span class="func">SpatialDimPlot</span>(brain, label=<span class="kw">TRUE</span>, label.size=<span class="num">3</span>)
+<span class="func">SpatialFeaturePlot</span>(brain, features=<span class="func">c</span>(<span class="str">"Snap25"</span>,<span class="str">"Hpca"</span>))
+
+<span class="comment"># SpatiallyVariableFeatures（基於 Moransi）</span>
+brain &lt;- <span class="func">FindSpatiallyVariableFeatures</span>(brain, assay=<span class="str">"SCT"</span>, selection.method=<span class="str">"moransi"</span>)</pre></div>
+<div class="code-tab-content" id="r2"><pre><span class="comment"># Giotto Suite — 跨平台空間分析</span>
+<span class="func">library</span>(Giotto)
+gobj &lt;- <span class="func">createGiottoObject</span>(expression=<span class="str">"expr.mtx"</span>,
+                          spatial_locs=<span class="str">"coords.tsv"</span>)
+gobj &lt;- <span class="func">normalizeGiotto</span>(gobj) |&gt; <span class="func">calculateHVF</span>() |&gt;
+        <span class="func">runPCA</span>() |&gt; <span class="func">runUMAP</span>() |&gt;
+        <span class="func">createNearestNetwork</span>(dimensions_to_use=<span class="num">1</span>:<span class="num">15</span>) |&gt;
+        <span class="func">doLeidenCluster</span>(resolution=<span class="num">0.4</span>)
+
+<span class="comment"># SVG via binSpect</span>
+svg &lt;- <span class="func">binSpect</span>(gobj, bin_method=<span class="str">"kmeans"</span>)
+<span class="comment"># cell-cell interaction</span>
+<span class="func">cellProximityEnrichment</span>(gobj, cluster_column=<span class="str">"leiden"</span>)</pre></div>
+</div>
+</section>
+
+<section class="quiz-section">
+<h3>📝 <span data-zh="自我檢測" data-en="Self-Check">自我檢測</span></h3>
+<div class="quiz-q" data-answer="1" data-exp-zh="Visium HD 為 sequencing-based 全轉錄組、bin 至 8 µm；面積大時最常用。" data-exp-en="Visium HD is sequencing-based whole-transcriptome, bins to 8 µm; the go-to for large areas.">
+<p data-lang="zh">1. 想做整片組織的全轉錄組空間 mapping，最常用平台？</p>
+<p data-lang="en">1. Whole-section, whole-transcriptome spatial mapping — most common platform?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">Xenium</div><div class="quiz-opt" data-idx="1">Visium HD</div><div class="quiz-opt" data-idx="2">CITE-seq</div><div class="quiz-opt" data-idx="3">CUT&Tag</div>
+</div><div class="quiz-feedback"></div></div>
+<div class="quiz-q" data-answer="2" data-exp-zh="cell2location 等 deconvolution 工具用 scRNA 參考估算每個 spot 的細胞型態組成。" data-exp-en="cell2location-style tools use scRNA references to estimate cell-type composition per spot.">
+<p data-lang="zh">2. Visium spot 涵蓋多個細胞，估算細胞型態比例的常用工具？</p>
+<p data-lang="en">2. To estimate cell-type fractions per Visium spot, a common tool is?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">DeepVariant</div><div class="quiz-opt" data-idx="1">DESeq2</div><div class="quiz-opt" data-idx="2">cell2location</div><div class="quiz-opt" data-idx="3">Bismark</div>
+</div><div class="quiz-feedback"></div></div>
+<div class="quiz-q" data-answer="3" data-exp-zh="Moran's I 是經典空間自相關統計，可用於檢驗基因表達是否有空間 pattern。" data-exp-en="Moran's I is the classic spatial autocorrelation statistic — tests for spatial expression patterns.">
+<p data-lang="zh">3. 用來量化空間表達 pattern 的經典統計？</p>
+<p data-lang="en">3. The classic statistic for spatial expression patterns?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">Wilcoxon</div><div class="quiz-opt" data-idx="1">Bonferroni</div><div class="quiz-opt" data-idx="2">Cohen's d</div><div class="quiz-opt" data-idx="3">Moran's I</div>
+</div><div class="quiz-feedback"></div></div>
+</section>
+
+<nav class="page-nav">
+<a href="09-scrnaseq.html"><span class="nav-dir" data-zh="← 上一章" data-en="← Prev">← 上一章</span><span class="nav-title" data-zh="Ch 9 · scRNA-seq 核心流程速覽" data-en="Ch 9 · scRNA-seq Core Workflow Recap">Ch 9 · scRNA-seq 核心流程速覽</span></a>
+<a href="11-long-read-rna.html"><span class="nav-dir" data-zh="下一章 →" data-en="Next →">下一章 →</span><span class="nav-title" data-zh="Ch 11 · 長讀全長轉錄組" data-en="Ch 11 · Long-read Full-length Transcriptomics">Ch 11 · 長讀全長轉錄組</span></a>
+</nav>
+</main>
+
+<footer class="site-footer">© Charlene — HTBA Interactive Tutorial</footer>
+<script src="i18n.js"></script>
+<script>
+window.addEventListener('scroll',()=>{const h=document.documentElement;document.getElementById('progressBar').style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100+'%';});
+function switchTab(b,id){const p=b.closest('.code-tabs');p.querySelectorAll('.code-tab-btn').forEach(x=>x.classList.remove('active'));p.querySelectorAll('.code-tab-content').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById(id).classList.add('active');}
+document.querySelectorAll('.quiz-q').forEach(q=>{const ans=+q.dataset.answer;q.querySelectorAll('.quiz-opt').forEach(o=>{o.onclick=()=>{if(q.dataset.done)return;q.dataset.done=1;const i=+o.dataset.idx,fb=q.querySelector('.quiz-feedback');q.querySelectorAll('.quiz-opt').forEach(x=>{if(+x.dataset.idx===ans)x.classList.add('correct');else if(+x.dataset.idx===i)x.classList.add('wrong');});if(i===ans){fb.className='quiz-feedback show correct-fb';fb.textContent='✓ '+(window.I18n&&window.I18n.get()==='en'?q.dataset.expEn:q.dataset.expZh);}else{fb.className='quiz-feedback show wrong-fb';fb.textContent='✗ '+(window.I18n&&window.I18n.get()==='en'?q.dataset.expEn:q.dataset.expZh);}};});});
+// platform recommender
+function updSp(){
+  const r=+document.getElementById('spR').value,a=+document.getElementById('spA').value,w=+document.getElementById('spW').value;
+  document.getElementById('spRv').textContent=r.toFixed(1);document.getElementById('spAv').textContent=a;document.getElementById('spWv').textContent=w?'Yes':'No';
+  let rec='',det='';
+  if(r<=1.5 && w===0) {rec='Xenium Prime 5K / CosMx 6K'; det='亞細胞解析度 + 已知 panel (5K-6K 基因)';}
+  else if(r<=1.5 && w===1) {rec='Stereo-seq'; det='全轉錄組 + 亞細胞 (220nm spot)，最大面積';}
+  else if(r<=10 && w===1 && a<=50) {rec='Visium HD'; det='8µm bin 全轉錄組，FFPE 友善';}
+  else if(r<=10 && w===0) {rec='Xenium 5K + nucleus seg'; det='高敏感度、適合 IF + 蛋白共染';}
+  else if(a>50) {rec='Stereo-seq'; det='最大 1cm × 1cm 面積';}
+  else {rec='Visium HD'; det='通用、生態系最成熟';}
+  const en=(window.I18n&&window.I18n.get()==='en');
+  document.getElementById('spRec').textContent=(en?'Recommended: ':'推薦：')+rec;
+  document.getElementById('spOutput').innerHTML='<strong>'+rec+'</strong><br>'+det+'<br><em style="color:var(--c-ink-muted);font-size:.82rem">'+(en?'Note: this is heuristic — confirm with vendor benchmarks':'說明：此為啟發式建議，請對照供應商基準')+'</em>';
+}
+['spR','spA','spW'].forEach(id=>document.getElementById(id).oninput=updSp);
+document.addEventListener('langchange',updSp);updSp();
+</script>
+</body></html>

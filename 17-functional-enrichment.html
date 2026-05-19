@@ -1,0 +1,189 @@
+<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Ch 17: 功能富集與通路 — HTBA</title>
+<link rel="stylesheet" href="styles.css">
+</head><body>
+<nav class="top-nav"><div class="top-nav-inner">
+  <a href="index.html" class="top-nav-brand"><span>🧬</span> <span data-zh="高通量分析與整合" data-en="HTBA Tutorial">高通量分析與整合</span></a>
+  <ul class="top-nav-links"><li><a href="01-overview.html">01</a></li><li><a href="02-experimental-design.html">02</a></li><li><a href="03-upstream-pipeline.html">03</a></li><li><a href="04-genomics-variants.html">04</a></li><li><a href="05-structural-variants.html">05</a></li><li><a href="06-atac-cutrun.html">06</a></li><li><a href="07-dna-methylation.html">07</a></li><li><a href="08-bulk-rnaseq.html">08</a></li><li><a href="09-scrnaseq.html">09</a></li><li><a href="10-spatial-omics.html">10</a></li><li><a href="11-long-read-rna.html">11</a></li><li><a href="12-proteomics.html">12</a></li><li><a href="13-metabolomics.html">13</a></li><li><a href="14-batch-correction.html">14</a></li><li><a href="15-multiomics-integration.html">15</a></li><li><a href="16-spatial-singlecell.html">16</a></li><li><a href="17-functional-enrichment.html" class="active">17</a></li><li><a href="18-network-analysis.html">18</a></li><li><a href="19-foundation-models.html">19</a></li><li><a href="20-reproducibility.html">20</a></li>
+    <li><a href="references/index.html" data-zh="📚 參考資料" data-en="📚 References">📚 參考資料</a></li>
+  </ul>
+</div></nav>
+<div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
+
+<header class="page-hero"><div class="step-badge">CH 17 / 20 · BLOCK 5 INTEGRATION</div>
+<h1 data-zh="功能富集與通路分析" data-en="Functional Enrichment & Pathway Analysis">功能富集與通路</h1>
+<p class="subtitle" data-lang="zh">ORA vs GSEA、clusterProfiler、Reactome、Decoupler — 把基因清單翻譯成生物學意義。</p>
+<p class="subtitle" data-lang="en">ORA vs. GSEA, clusterProfiler, Reactome, Decoupler — translate gene lists into biology.</p>
+</header>
+
+<main class="content-wrap">
+
+<section class="section">
+<div class="section-label" data-zh="兩大策略" data-en="TWO STRATEGIES">兩大策略</h2>
+<h2 data-zh="一、ORA vs. GSEA" data-en="I. ORA vs. GSEA">一、ORA vs. GSEA</h2>
+<div class="card-grid cols-2">
+<div class="card"><h4>🎯 <span data-zh="ORA (Over-Representation Analysis)" data-en="ORA (Over-Representation)">ORA</span></h4>
+<div data-lang="zh"><p>取一個固定的「重要基因清單」（如 padj &lt; 0.05 的 DEG），用 hypergeometric / Fisher 檢驗其與 gene set 的重疊。<strong>優：</strong>簡單、直觀；<strong>缺：</strong>依賴主觀閾值、忽略 fold change 大小。</p></div>
+<div data-lang="en"><p>Take a fixed "important gene list" (e.g., padj &lt; 0.05 DEGs); test overlap with gene sets via hypergeometric / Fisher. <strong>Pro:</strong> simple, intuitive; <strong>Con:</strong> threshold-dependent, ignores fold-change magnitude.</p></div>
+</div>
+<div class="card"><h4>📊 <span data-zh="GSEA (Gene Set Enrichment)" data-en="GSEA (Gene Set Enrichment)">GSEA</span></h4>
+<div data-lang="zh"><p>使用所有基因的排名 score，計算 gene set 在 ranking 上的聚集程度（running ES + permutation p-value）。<strong>優：</strong>無閾值、可偵測微小但協調的變化；<strong>缺：</strong>計算稍慢、結果對 ranking metric 敏感。</p></div>
+<div data-lang="en"><p>Uses all-gene ranking scores; tests how a gene set clusters in the ranking (running ES + permutation p). <strong>Pro:</strong> threshold-free, detects small coordinated shifts; <strong>Con:</strong> slower, sensitive to ranking metric.</p></div>
+</div>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="資料庫與工具" data-en="DATABASES & TOOLS">資料庫與工具</h2>
+<h2 data-zh="二、主流 gene-set 資料庫與工具" data-en="II. Mainstream Gene-set DBs and Tools">二、資料庫與工具</h2>
+<div class="card-grid cols-3">
+<div class="card"><h4>📚 <span data-zh="基因組註釋" data-en="Gene annotation">基因組註釋</span></h4><p><strong>GO (BP/MF/CC)</strong>、<strong>KEGG</strong>、<strong>Reactome</strong>、<strong>WikiPathways</strong>、<strong>MSigDB H/C2/C5</strong>、<strong>DoRothEA</strong>（TF→target）、<strong>PROGENy</strong>（pathway response）。</p></div>
+<div class="card"><h4>🛠️ <span data-zh="R 工具" data-en="R tools">R 工具</span></h4><p><strong>clusterProfiler</strong>（包含 enrichGO / enrichKEGG / GSEA）、<strong>fgsea</strong>（極快 GSEA）、<strong>GSVA</strong>（per-sample score）、<strong>ReactomePA</strong>、<strong>decoupleR</strong>（multi-method）。</p></div>
+<div class="card"><h4>🐍 <span data-zh="Python 工具" data-en="Python tools">Python 工具</span></h4><p><strong>GSEAPy</strong>、<strong>Enrichr</strong> (online + Python)、<strong>decoupler-py</strong>（單細胞友善）、<strong>Pathway Commons</strong> API、<strong>Omnipath</strong>。</p></div>
+<div class="card"><h4 data-zh="單細胞 pathway score" data-en="scPathway scoring">單細胞 pathway 評分</h4><p><strong>AUCell</strong>、<strong>UCell</strong>、<strong>Vision</strong>、<strong>SCENIC</strong>（TF regulon）、<strong>VAM</strong>。可在 UMAP 上以連續顏色呈現 pathway activity。</p></div>
+<div class="card"><h4 data-zh="多 omics 富集" data-en="Multi-omics enrichment">多 omics 富集</h4><p><strong>mummichog</strong>（metabolome m/z）、<strong>FELLA</strong>（compound + KEGG 圖）、<strong>chromVAR</strong>（ATAC TF motif）、<strong>WMR</strong>（weighted multi-omics ranking）。</p></div>
+<div class="card"><h4 data-zh="視覺化" data-en="Visualization">視覺化</h4><p><strong>cnetplot / emapplot</strong>（clusterProfiler）、<strong>EnrichmentMap</strong>（Cytoscape）、<strong>upset</strong>、<strong>ridgeplot</strong>、<strong>bubble plot</strong>。</p></div>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="決策" data-en="DECISION">決策</h2>
+<h2 data-zh="三、選 ORA 還是 GSEA？" data-en="III. ORA or GSEA?">三、選擇指引</h2>
+<div class="decision-tree">
+<h4>🌳 <span data-zh="實用流程" data-en="Practical workflow">實用流程</span></h4>
+<div data-lang="zh">
+<div class="dt-node"><span class="dt-q">Q1</span><div>有明確的「顯著基因清單」（DEG / DMR / 蛋白） <span class="dt-arrow">→</span> ORA 適合做首次快速 scan。</div></div>
+<div class="dt-node"><span class="dt-q">Q2</span><div>fold change 變化不大但成系統性方向（如老化、代謝重組） <span class="dt-arrow">→</span> GSEA 更敏感。</div></div>
+<div class="dt-node"><span class="dt-q">Q3</span><div>單細胞 cluster 想看每個 cluster 在每個 pathway 的活躍度 <span class="dt-arrow">→</span> 用 AUCell / UCell / decoupleR 的 per-cell score。</div></div>
+<div class="dt-node"><span class="dt-q">Q4</span><div>跨 omics 整合（RNA + Methyl + Metabolite）→ 用 <strong>decoupleR + OmniPath</strong> 共同 model 多層 signature；或 mummichog 直接跑 metabolite m/z。</div></div>
+</div>
+<div data-lang="en">
+<div class="dt-node"><span class="dt-q">Q1</span><div>Have a clear "significant gene list" (DEG/DMR/protein) <span class="dt-arrow">→</span> ORA for a fast first scan.</div></div>
+<div class="dt-node"><span class="dt-q">Q2</span><div>Small but coordinated fold-changes (aging, metabolic shift) <span class="dt-arrow">→</span> GSEA is more sensitive.</div></div>
+<div class="dt-node"><span class="dt-q">Q3</span><div>Per-cluster pathway activity in single-cell <span class="dt-arrow">→</span> AUCell / UCell / decoupleR per-cell scores.</div></div>
+<div class="dt-node"><span class="dt-q">Q4</span><div>Cross-omics integration (RNA + Methyl + Metabolite) → use <strong>decoupleR + OmniPath</strong> to jointly model multi-layer signatures; or mummichog directly on metabolite m/z.</div></div>
+</div>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="互動：GSEA" data-en="INTERACTIVE">互動</h2>
+<h2 data-zh="四、GSEA Enrichment Score 模擬" data-en="IV. GSEA Enrichment Score Sim">四、GSEA 模擬</h2>
+<div data-lang="zh"><p>調整 gene set 在 ranking 中的位置與聚集程度。Enrichment Score (ES) 是 running sum 的最大絕對值。</p></div>
+<div data-lang="en"><p>Move gene set position and clustering in the ranking. Enrichment Score (ES) is the max absolute running-sum.</p></div>
+<div class="interactive-panel">
+<div class="sim-stats"><span class="sim-stat pass" id="esV">ES: —</span><span class="sim-stat warn" id="esP">Sig: —</span></div>
+<div class="slider-group"><label><span data-zh="集中度 (高 = 聚集)" data-en="Concentration (high = clustered)">集中度</span><span id="esCv">3.0</span></label><input type="range" id="esC" min="0" max="5" value="3" step="0.1"></div>
+<div class="slider-group"><label><span data-zh="位置偏向 (-1 下調 / +1 上調)" data-en="Position bias (-1 down / +1 up)">位置偏向</span><span id="esBv">0.7</span></label><input type="range" id="esB" min="-1" max="1" value="0.7" step="0.05"></div>
+<canvas id="esCv2" style="background:var(--c-surface-alt);border-radius:8px;width:100%;height:220px"></canvas>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="程式碼" data-en="CODE">程式碼</div>
+<h2 data-zh="五、clusterProfiler / fgsea / decoupleR" data-en="V. clusterProfiler / fgsea / decoupleR">五、實作</h2>
+<div class="code-tabs"><div class="code-tab-btns"><button class="code-tab-btn active" onclick="switchTab(this,'r1')">R / clusterProfiler</button><button class="code-tab-btn" onclick="switchTab(this,'r2')">R / fgsea</button><button class="code-tab-btn" onclick="switchTab(this,'py1')">Python / decoupler-py</button></div>
+<div class="code-tab-content active" id="r1"><pre><span class="comment"># clusterProfiler — ORA + GSEA</span>
+<span class="func">library</span>(clusterProfiler); <span class="func">library</span>(org.Hs.eg.db)
+
+<span class="comment"># ORA — KEGG</span>
+sig &lt;- res$gene[res$padj &lt; <span class="num">0.05</span> &amp; <span class="func">abs</span>(res$log2FoldChange) &gt; <span class="num">1</span>]
+ora &lt;- <span class="func">enrichKEGG</span>(gene = sig, organism = <span class="str">"hsa"</span>, keyType = <span class="str">"ENTREZID"</span>)
+
+<span class="comment"># GSEA — Reactome</span>
+ranks &lt;- res$log2FoldChange; <span class="func">names</span>(ranks) &lt;- res$gene
+ranks &lt;- <span class="func">sort</span>(ranks, decreasing = <span class="kw">TRUE</span>)
+
+<span class="func">library</span>(ReactomePA)
+gsea &lt;- <span class="func">gsePathway</span>(ranks, organism = <span class="str">"human"</span>, pvalueCutoff = <span class="num">0.05</span>)
+<span class="func">dotplot</span>(gsea, showCategory = <span class="num">15</span>)
+<span class="func">emapplot</span>(<span class="func">pairwise_termsim</span>(gsea))</pre></div>
+<div class="code-tab-content" id="r2"><pre><span class="comment"># fgsea — 極速 GSEA</span>
+<span class="func">library</span>(fgsea); <span class="func">library</span>(msigdbr)
+h_gs &lt;- <span class="func">msigdbr</span>(species = <span class="str">"Homo sapiens"</span>, category = <span class="str">"H"</span>)
+pathways &lt;- <span class="func">split</span>(h_gs$gene_symbol, h_gs$gs_name)
+
+res_f &lt;- <span class="func">fgsea</span>(pathways = pathways, stats = ranks,
+              minSize = <span class="num">10</span>, maxSize = <span class="num">500</span>, nproc = <span class="num">8</span>)
+top &lt;- res_f[<span class="func">order</span>(padj)][<span class="num">1</span>:<span class="num">20</span>]
+<span class="func">plotEnrichment</span>(pathways[[<span class="str">"HALLMARK_INFLAMMATORY_RESPONSE"</span>]], ranks)</pre></div>
+<div class="code-tab-content" id="py1"><pre><span class="comment"># decoupler-py — 跨方法、單細胞友善</span>
+<span class="kw">import</span> decoupler <span class="kw">as</span> dc
+net = dc.<span class="func">get_progeny</span>(organism = <span class="str">"human"</span>, top = <span class="num">500</span>)
+
+<span class="comment"># 跑多種方法</span>
+acts, _ = dc.<span class="func">run_mlm</span>(mat=adata.X, net=net,
+                       source=<span class="str">"source"</span>, target=<span class="str">"target"</span>, weight=<span class="str">"weight"</span>)
+adata.obsm[<span class="str">"pathway_acts"</span>] = acts
+
+<span class="comment"># 用 GSEA 風格做 ranking</span>
+dc.<span class="func">run_gsea</span>(adata, net=net, source=<span class="str">"source"</span>, target=<span class="str">"target"</span>)
+dc.pl.<span class="func">barplot</span>(acts, top=<span class="num">20</span>)</pre></div>
+</div>
+</section>
+
+<section class="quiz-section">
+<h3>📝 <span data-zh="自我檢測" data-en="Self-Check">自我檢測</span></h3>
+<div class="quiz-q" data-answer="1" data-exp-zh="GSEA 不依賴 cut-off，能偵測 small coordinated changes，適合老化、代謝等微小但系統性的訊號。" data-exp-en="GSEA is threshold-free and detects small coordinated changes — ideal for aging / metabolic signals.">
+<p data-lang="zh">1. fold change 很小但成系統性方向，最敏感的富集方法？</p>
+<p data-lang="en">1. Small fold-changes with coordinated direction — most sensitive enrichment method?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">ORA</div><div class="quiz-opt" data-idx="1">GSEA</div><div class="quiz-opt" data-idx="2">Fisher exact</div><div class="quiz-opt" data-idx="3">Bonferroni</div>
+</div><div class="quiz-feedback"></div></div>
+<div class="quiz-q" data-answer="3" data-exp-zh="AUCell / UCell 是單細胞 pathway 評分主流工具，給每個細胞一個 pathway score。" data-exp-en="AUCell / UCell are the standard single-cell pathway-score tools — one score per cell.">
+<p data-lang="zh">2. 想計算每個 single cell 的 pathway 活躍度？</p>
+<p data-lang="en">2. To compute pathway activity per single cell?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">DESeq2</div><div class="quiz-opt" data-idx="1">MaxQuant</div><div class="quiz-opt" data-idx="2">Bismark</div><div class="quiz-opt" data-idx="3">AUCell / UCell</div>
+</div><div class="quiz-feedback"></div></div>
+<div class="quiz-q" data-answer="2" data-exp-zh="MSigDB H (Hallmark) 是 50 個高度策展的 cancer / immune / metabolism gene set，常為 GSEA 第一站。" data-exp-en="MSigDB H (Hallmark) — 50 highly curated cancer/immune/metabolism gene sets — common GSEA first stop.">
+<p data-lang="zh">3. GSEA 跑第一站常用的 50 個 Hallmark 通路來自？</p>
+<p data-lang="en">3. The 50 Hallmark pathways commonly used first in GSEA come from?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">KEGG</div><div class="quiz-opt" data-idx="1">gnomAD</div><div class="quiz-opt" data-idx="2">MSigDB H</div><div class="quiz-opt" data-idx="3">PRIDE</div>
+</div><div class="quiz-feedback"></div></div>
+</section>
+
+<nav class="page-nav">
+<a href="16-spatial-singlecell.html"><span class="nav-dir" data-zh="← 上一章" data-en="← Prev">← 上一章</span><span class="nav-title" data-zh="Ch 16 · 空間 × 單細胞整合" data-en="Ch 16 · Spatial × Single-cell Integration">Ch 16 · 空間 × 單細胞整合</span></a>
+<a href="18-network-analysis.html"><span class="nav-dir" data-zh="下一章 →" data-en="Next →">下一章 →</span><span class="nav-title" data-zh="Ch 18 · 網絡分析與圖學習" data-en="Ch 18 · Network Analysis &amp; Graph Learning">Ch 18 · 網絡分析與圖學習</span></a>
+</nav>
+</main>
+
+<footer class="site-footer">© Charlene — HTBA Interactive Tutorial</footer>
+<script src="i18n.js"></script>
+<script>
+window.addEventListener('scroll',()=>{const h=document.documentElement;document.getElementById('progressBar').style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100+'%';});
+function switchTab(b,id){const p=b.closest('.code-tabs');p.querySelectorAll('.code-tab-btn').forEach(x=>x.classList.remove('active'));p.querySelectorAll('.code-tab-content').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById(id).classList.add('active');}
+document.querySelectorAll('.quiz-q').forEach(q=>{const ans=+q.dataset.answer;q.querySelectorAll('.quiz-opt').forEach(o=>{o.onclick=()=>{if(q.dataset.done)return;q.dataset.done=1;const i=+o.dataset.idx,fb=q.querySelector('.quiz-feedback');q.querySelectorAll('.quiz-opt').forEach(x=>{if(+x.dataset.idx===ans)x.classList.add('correct');else if(+x.dataset.idx===i)x.classList.add('wrong');});if(i===ans){fb.className='quiz-feedback show correct-fb';fb.textContent='✓ '+(window.I18n&&window.I18n.get()==='en'?q.dataset.expEn:q.dataset.expZh);}else{fb.className='quiz-feedback show wrong-fb';fb.textContent='✗ '+(window.I18n&&window.I18n.get()==='en'?q.dataset.expEn:q.dataset.expZh);}};});});
+// GSEA sim
+const cv=document.getElementById('esCv2'),ctx=cv.getContext('2d');
+function draw(){
+  const c=+document.getElementById('esC').value,b=+document.getElementById('esB').value;
+  document.getElementById('esCv').textContent=c.toFixed(1);document.getElementById('esBv').textContent=b.toFixed(2);
+  const w=cv.width=cv.offsetWidth,h=cv.height=cv.offsetHeight;
+  ctx.fillStyle='#eef5f7';ctx.fillRect(0,0,w,h);
+  // 1000-gene ranking; 80 in gene set
+  const N=1000,K=80;const center=(b+1)/2*N;const sigma=Math.max(15,(N/3)*Math.exp(-c));
+  const inSet=new Set();while(inSet.size<K){let x=Math.round(center+(Math.random()-.5)*sigma*2*Math.sqrt(-Math.log(Math.random())));if(x>=0&&x<N)inSet.add(x);}
+  const ranks=Array.from({length:N},(_,i)=>i);
+  let hit=0,miss=0;let pos=0,maxES=0,minES=0;const path=[];
+  const totalHit=K,totalMiss=N-K;
+  ranks.forEach(r=>{if(inSet.has(r))pos+=1/totalHit;else pos-=1/totalMiss;path.push(pos);if(pos>maxES)maxES=pos;if(pos<minES)minES=pos;});
+  const ES=Math.abs(maxES)>=Math.abs(minES)?maxES:minES;
+  // draw
+  ctx.strokeStyle='#0e7490';ctx.lineWidth=2;ctx.beginPath();
+  path.forEach((p,i)=>{const x=i/N*w,y=h/2-p*70;if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);});ctx.stroke();
+  // hit ticks
+  ctx.strokeStyle='#f97316';ctx.lineWidth=1;ranks.forEach(r=>{if(inSet.has(r)){const x=r/N*w;ctx.beginPath();ctx.moveTo(x,h-22);ctx.lineTo(x,h-2);ctx.stroke();}});
+  // axes
+  ctx.strokeStyle='#94a3b8';ctx.setLineDash([3,3]);ctx.beginPath();ctx.moveTo(0,h/2);ctx.lineTo(w,h/2);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#0f172a';ctx.font='10px sans-serif';ctx.fillText('rank →',w/2-20,h/2-3);ctx.fillText('ES',2,12);
+  document.getElementById('esV').textContent='ES: '+ES.toFixed(2);
+  document.getElementById('esP').textContent='Sig: '+(Math.abs(ES)>0.35?'significant':'not significant');
+  document.getElementById('esP').className='sim-stat '+(Math.abs(ES)>0.35?'pass':'warn');
+}
+['esC','esB'].forEach(id=>document.getElementById(id).oninput=draw);
+window.addEventListener('resize',draw);setTimeout(draw,50);
+</script>
+</body></html>

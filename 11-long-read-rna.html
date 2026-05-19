@@ -1,0 +1,184 @@
+<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Ch 11: 長讀 RNA-seq — HTBA</title>
+<link rel="stylesheet" href="styles.css">
+</head><body>
+<nav class="top-nav"><div class="top-nav-inner">
+  <a href="index.html" class="top-nav-brand"><span>🧬</span> <span data-zh="高通量分析與整合" data-en="HTBA Tutorial">高通量分析與整合</span></a>
+  <ul class="top-nav-links"><li><a href="01-overview.html">01</a></li><li><a href="02-experimental-design.html">02</a></li><li><a href="03-upstream-pipeline.html">03</a></li><li><a href="04-genomics-variants.html">04</a></li><li><a href="05-structural-variants.html">05</a></li><li><a href="06-atac-cutrun.html">06</a></li><li><a href="07-dna-methylation.html">07</a></li><li><a href="08-bulk-rnaseq.html">08</a></li><li><a href="09-scrnaseq.html">09</a></li><li><a href="10-spatial-omics.html">10</a></li><li><a href="11-long-read-rna.html" class="active">11</a></li><li><a href="12-proteomics.html">12</a></li><li><a href="13-metabolomics.html">13</a></li><li><a href="14-batch-correction.html">14</a></li><li><a href="15-multiomics-integration.html">15</a></li><li><a href="16-spatial-singlecell.html">16</a></li><li><a href="17-functional-enrichment.html">17</a></li><li><a href="18-network-analysis.html">18</a></li><li><a href="19-foundation-models.html">19</a></li><li><a href="20-reproducibility.html">20</a></li>
+    <li><a href="references/index.html" data-zh="📚 參考資料" data-en="📚 References">📚 參考資料</a></li>
+  </ul>
+</div></nav>
+<div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
+
+<header class="page-hero"><div class="step-badge">CH 11 / 20 · BLOCK 3 TRANSCRIPTOMICS</div>
+<h1 data-zh="長讀全長轉錄組" data-en="Long-read Full-length Transcriptomics">長讀全長轉錄組</h1>
+<p class="subtitle" data-lang="zh">PacBio Iso-Seq + ONT direct-RNA：完整 isoform、新轉錄本與 m6A 同步偵測。</p>
+<p class="subtitle" data-lang="en">PacBio Iso-Seq + ONT direct-RNA: complete isoforms, novel transcripts, and joint m6A detection.</p>
+</header>
+
+<main class="content-wrap">
+
+<section class="section">
+<div class="section-label" data-zh="技術" data-en="TECH">技術</h2>
+<h2 data-zh="一、為什麼需要長讀 RNA-seq？" data-en="I. Why Long-read RNA-seq?">一、為什麼需要長讀？</h2>
+<div data-lang="zh"><p>短讀（150 bp）需要重新組裝 isoform，常會把多個 transcript 的 reads 重新拼接，造成 isoform-level 估算偏差。長讀（&gt;1 kb，常見全長 1-10 kb）能<strong>一條 read 涵蓋整條 mRNA</strong>，直接觀察 splice 組合與 UTR；對<strong>新 isoform、融合轉錄本、allelic-specific isoform、A-to-I editing、m6A modification</strong>都更有信心。</p>
+<p><strong>2024-2025 進展：</strong>PacBio Revio 通量提升 15×；ONT R10.4.1 RNA-002 化學 accuracy ~98%；scIso-Seq 與 ONT scNanopore-seq 已可做單細胞 isoform。</p></div>
+<div data-lang="en"><p>Short reads (150 bp) reassemble isoforms, often mixing reads across transcripts and biasing isoform-level estimates. Long reads (&gt;1 kb, often 1–10 kb full-length) can <strong>span the whole mRNA in one read</strong>, observing splice combinations and UTRs directly. Better for <strong>novel isoforms, fusion transcripts, allelic-specific isoforms, A-to-I editing, m6A modification</strong>.</p>
+<p><strong>2024-2025:</strong> PacBio Revio raised throughput 15×; ONT R10.4.1 RNA-002 chemistry hits ~98% accuracy; scIso-Seq and ONT scNanopore-seq enable single-cell isoform analysis.</p></div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="平台對比" data-en="PLATFORMS">平台</h2>
+<h2 data-zh="二、PacBio Iso-Seq vs. ONT direct-RNA" data-en="II. PacBio Iso-Seq vs. ONT direct-RNA">二、平台對比</h2>
+<table class="comp-table">
+<thead><tr><th>Aspect</th><th>PacBio Iso-Seq</th><th>ONT direct-RNA</th></tr></thead>
+<tbody>
+<tr><td data-zh="原理" data-en="Principle"><strong>原理</strong></td><td data-zh="cDNA → HiFi CCS" data-en="cDNA → HiFi CCS">cDNA HiFi</td><td data-zh="原生 RNA 直讀（無 cDNA）" data-en="Native RNA (no cDNA)">原生 RNA</td></tr>
+<tr><td data-zh="準確度" data-en="Accuracy"><strong>準確度</strong></td><td>&gt;99.5%</td><td>~98% (R10.4.1)</td></tr>
+<tr><td data-zh="讀長" data-en="Read length"><strong>讀長</strong></td><td>1-15 kb full-length</td><td>up to 10 kb+</td></tr>
+<tr><td data-zh="優勢" data-en="Strength"><strong>強項</strong></td><td data-zh="高準確、isoform 量化" data-en="High accuracy, isoform quantification">準確 isoform</td><td data-zh="poly(A) tail、m6A、A-to-I 同步" data-en="poly(A) tail, m6A, A-to-I jointly">直讀修飾</td></tr>
+<tr><td data-zh="輸入" data-en="Input"><strong>RNA 量</strong></td><td>100-500 ng</td><td>500 ng-1 µg</td></tr>
+</tbody></table>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="工具" data-en="TOOLS">工具</h2>
+<h2 data-zh="三、長讀 RNA 分析工具" data-en="III. Long-read RNA Tools">三、分析工具</h2>
+<div class="card-grid cols-3">
+<div class="card"><h4 data-zh="比對" data-en="Alignment">比對</h4><p data-lang="zh"><strong>minimap2</strong> -ax splice + -uf -k14（PacBio）或 -ax splice + -k14（ONT）；HISAT2-long、deSALT。</p><p data-lang="en"><strong>minimap2</strong> -ax splice + -uf -k14 (PacBio) or -ax splice + -k14 (ONT); HISAT2-long, deSALT.</p></div>
+<div class="card"><h4 data-zh="Isoform 重組" data-en="Isoform reconstruction">Isoform 重組</h4><p data-lang="zh"><strong>StringTie2</strong>（reference-based）、<strong>FLAIR</strong>、<strong>TALON</strong>、<strong>Bambu</strong>（含 quantification）、<strong>IsoQuant</strong>。</p><p data-lang="en"><strong>StringTie2</strong> (reference-based), <strong>FLAIR</strong>, <strong>TALON</strong>, <strong>Bambu</strong> (with quantification), <strong>IsoQuant</strong>.</p></div>
+<div class="card"><h4 data-zh="融合轉錄本" data-en="Fusion transcripts">Fusion</h4><p data-lang="zh"><strong>JAFFAL</strong>（長讀專屬）、<strong>FusionSeeker</strong>、<strong>Arriba long-read</strong>。</p><p data-lang="en"><strong>JAFFAL</strong> (long-read), <strong>FusionSeeker</strong>, <strong>Arriba long-read</strong>.</p></div>
+<div class="card"><h4>m6A / A-to-I</h4><p data-lang="zh">ONT direct-RNA + <strong>m6Anet</strong>、<strong>EpiNano</strong>、<strong>Tombo</strong>、<strong>xPore</strong>；PacBio Kinetics + <strong>PacBio Methylation</strong>。</p><p data-lang="en">ONT direct-RNA + <strong>m6Anet</strong>, <strong>EpiNano</strong>, <strong>Tombo</strong>, <strong>xPore</strong>; PacBio Kinetics + <strong>PacBio Methylation</strong>.</p></div>
+<div class="card"><h4 data-zh="差異 isoform" data-en="Differential isoform">差異 isoform</h4><p data-lang="zh"><strong>SUPPA2</strong>、<strong>DRIMSeq</strong>、<strong>satuRn</strong>（高速）、<strong>IsoformSwitchAnalyzeR</strong>。</p><p data-lang="en"><strong>SUPPA2</strong>, <strong>DRIMSeq</strong>, <strong>satuRn</strong> (fast), <strong>IsoformSwitchAnalyzeR</strong>.</p></div>
+<div class="card"><h4 data-zh="單細胞長讀" data-en="Single-cell long-read">單細胞長讀</h4><p data-lang="zh">10X + Iso-Seq scIso-Seq、ONT scNanopore-seq、<strong>scNanoGPS</strong>、<strong>FLAMES</strong>、<strong>BLAZE</strong>。</p><p data-lang="en">10X + Iso-Seq scIso-Seq, ONT scNanopore-seq, <strong>scNanoGPS</strong>, <strong>FLAMES</strong>, <strong>BLAZE</strong>.</p></div>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="互動" data-en="INTERACTIVE">互動</h2>
+<h2 data-zh="四、Isoform 解析力模擬" data-en="IV. Isoform Resolution Sim">四、Isoform 解析力</h2>
+<div data-lang="zh"><p>調整讀長與基因 isoform 數，估算「完整 isoform 偵測率」（簡化模型）。長讀讀越長越能整段 cover；短讀則需要做組裝拼接。</p></div>
+<div data-lang="en"><p>Move read length and isoform count to estimate "complete isoform detection rate" (simplified model). Longer reads cover the full transcript; short reads need re-assembly.</p></div>
+<div class="interactive-panel">
+<div class="sim-stats"><span class="sim-stat pass" id="liR">Detection: —</span><span class="sim-stat warn" id="liA">Avg amb.: —</span></div>
+<div class="slider-group"><label><span data-zh="讀長 (bp)" data-en="Read length (bp)">讀長</span><span id="liLv">1500</span></label><input type="range" id="liL" min="150" max="15000" value="1500" step="50"></div>
+<div class="slider-group"><label><span data-zh="基因 isoform 數" data-en="Isoforms / gene">Isoforms</span><span id="liIv">5</span></label><input type="range" id="liI" min="1" max="20" value="5" step="1"></div>
+<canvas id="liCv" style="background:var(--c-surface-alt);border-radius:8px;width:100%;height:180px"></canvas>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="程式碼" data-en="CODE">程式碼</div>
+<h2 data-zh="五、長讀 RNA 分析" data-en="V. Long-read RNA Analysis">五、實作</h2>
+<div class="code-tabs"><div class="code-tab-btns"><button class="code-tab-btn active" onclick="switchTab(this,'sh1')">Shell / minimap2 + Bambu</button><button class="code-tab-btn" onclick="switchTab(this,'r1')">R / Bambu</button><button class="code-tab-btn" onclick="switchTab(this,'py1')">Python / m6Anet</button></div>
+<div class="code-tab-content active" id="sh1"><pre><span class="comment"># PacBio Iso-Seq full pipeline</span>
+<span class="func">ccs</span> subreads.bam ccs.bam --min-rq <span class="num">0.9</span>
+<span class="func">lima</span> ccs.bam primers.fa demux.bam --isoseq --peek-guess
+<span class="func">isoseq3</span> refine demux.bam primers.fa flnc.bam --require-polya
+<span class="func">isoseq3</span> cluster flnc.bam clustered.bam
+
+<span class="comment"># 比對到基因組</span>
+<span class="func">minimap2</span> -ax splice -uf --secondary=no -C5 -t <span class="num">16</span> \
+         ref.fa clustered.hq.fasta | samtools sort -o aln.bam
+
+<span class="comment"># 量化 + isoform discovery（Bambu）</span>
+<span class="comment"># 在 R 中做：詳見下一個 tab</span></pre></div>
+<div class="code-tab-content" id="r1"><pre><span class="comment"># Bambu — context-aware isoform discovery + quantification</span>
+<span class="func">library</span>(bambu)
+test &lt;- <span class="func">bambu</span>(reads = <span class="func">c</span>(<span class="str">"s1.bam"</span>, <span class="str">"s2.bam"</span>, <span class="str">"s3.bam"</span>),
+               annotations = <span class="func">prepareAnnotations</span>(<span class="str">"gencode.gtf"</span>),
+               genome = <span class="str">"ref.fa"</span>, ncore = <span class="num">8</span>)
+
+<span class="comment"># 萃取結果</span>
+counts &lt;- <span class="func">assays</span>(test)$counts
+<span class="func">writeBambuOutput</span>(test, path = <span class="str">"bambu_output/"</span>)
+
+<span class="comment"># 下游差異 isoform 用 DRIMSeq / satuRn</span>
+<span class="func">library</span>(satuRn)
+sce  &lt;- <span class="func">fitDTU</span>(test, formula = ~condition)
+res  &lt;- <span class="func">testDTU</span>(sce, contrasts = <span class="func">c</span>(<span class="str">"trtvsctrl"</span>))</pre></div>
+<div class="code-tab-content" id="py1"><pre><span class="comment"># m6Anet — ONT direct-RNA m6A detection</span>
+<span class="comment"># pip install m6anet</span>
+<span class="func">m6anet-dataprep</span> --eventalign eventalign.txt \
+                --out_dir dataprep_out --n_processes <span class="num">8</span>
+<span class="func">m6anet-run_inference</span> --input_dir dataprep_out \
+                     --out_dir inference_out --infer_mod_rate
+
+<span class="comment"># Python: 篩選高信賴 m6A 位點</span>
+<span class="kw">import</span> pandas <span class="kw">as</span> pd
+df = pd.<span class="func">read_csv</span>(<span class="str">"inference_out/data.site_proba.csv"</span>)
+m6a = df[(df.probability_modified &gt; <span class="num">0.9</span>) &amp; (df.mod_ratio &gt; <span class="num">0.5</span>)]
+<span class="func">print</span>(<span class="str">f"High-confidence m6A sites: {len(m6a)}"</span>)</pre></div>
+</div>
+</section>
+
+<section class="quiz-section">
+<h3>📝 <span data-zh="自我檢測" data-en="Self-Check">自我檢測</span></h3>
+<div class="quiz-q" data-answer="1" data-exp-zh="ONT direct-RNA 可在不轉成 cDNA 的情況下同步偵測 m6A、poly(A)、A-to-I editing。" data-exp-en="ONT direct-RNA detects m6A, poly(A), and A-to-I editing without cDNA conversion.">
+<p data-lang="zh">1. 想同時偵測序列與 m6A 修飾，最直接的技術？</p>
+<p data-lang="en">1. Most direct technology for sequence + m6A modification?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">Illumina poly-A</div><div class="quiz-opt" data-idx="1">ONT direct-RNA</div><div class="quiz-opt" data-idx="2">EPIC array</div><div class="quiz-opt" data-idx="3">SMART-seq</div>
+</div><div class="quiz-feedback"></div></div>
+<div class="quiz-q" data-answer="0" data-exp-zh="Bambu 為 R/Bioconductor 工具，能同時做 context-aware isoform discovery + quantification。" data-exp-en="Bambu (R/Bioconductor) does context-aware isoform discovery + quantification jointly.">
+<p data-lang="zh">2. 長讀 RNA-seq 同時做 isoform discovery 與量化的 R 工具？</p>
+<p data-lang="en">2. R tool for joint long-read isoform discovery + quantification?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">Bambu</div><div class="quiz-opt" data-idx="1">VEP</div><div class="quiz-opt" data-idx="2">CNVkit</div><div class="quiz-opt" data-idx="3">SoupX</div>
+</div><div class="quiz-feedback"></div></div>
+<div class="quiz-q" data-answer="2" data-exp-zh="minimap2 -ax splice 為長讀 mRNA 的標準 splice-aware 比對。" data-exp-en="minimap2 -ax splice is the standard splice-aware aligner for long-read mRNA.">
+<p data-lang="zh">3. PacBio / ONT mRNA 比對的標準工具？</p>
+<p data-lang="en">3. Standard aligner for PacBio / ONT mRNA?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">bwa-mem2</div><div class="quiz-opt" data-idx="1">Bismark</div><div class="quiz-opt" data-idx="2">minimap2 -ax splice</div><div class="quiz-opt" data-idx="3">STAR (default)</div>
+</div><div class="quiz-feedback"></div></div>
+</section>
+
+<nav class="page-nav">
+<a href="10-spatial-omics.html"><span class="nav-dir" data-zh="← 上一章" data-en="← Prev">← 上一章</span><span class="nav-title" data-zh="Ch 10 · 空間轉錄組 (Spatial)" data-en="Ch 10 · Spatial Transcriptomics">Ch 10 · 空間轉錄組 (Spatial)</span></a>
+<a href="12-proteomics.html"><span class="nav-dir" data-zh="下一章 →" data-en="Next →">下一章 →</span><span class="nav-title" data-zh="Ch 12 · 蛋白質體 (Proteomics)" data-en="Ch 12 · Proteomics">Ch 12 · 蛋白質體 (Proteomics)</span></a>
+</nav>
+</main>
+
+<footer class="site-footer">© Charlene — HTBA Interactive Tutorial</footer>
+<script src="i18n.js"></script>
+<script>
+window.addEventListener('scroll',()=>{const h=document.documentElement;document.getElementById('progressBar').style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100+'%';});
+function switchTab(b,id){const p=b.closest('.code-tabs');p.querySelectorAll('.code-tab-btn').forEach(x=>x.classList.remove('active'));p.querySelectorAll('.code-tab-content').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById(id).classList.add('active');}
+document.querySelectorAll('.quiz-q').forEach(q=>{const ans=+q.dataset.answer;q.querySelectorAll('.quiz-opt').forEach(o=>{o.onclick=()=>{if(q.dataset.done)return;q.dataset.done=1;const i=+o.dataset.idx,fb=q.querySelector('.quiz-feedback');q.querySelectorAll('.quiz-opt').forEach(x=>{if(+x.dataset.idx===ans)x.classList.add('correct');else if(+x.dataset.idx===i)x.classList.add('wrong');});if(i===ans){fb.className='quiz-feedback show correct-fb';fb.textContent='✓ '+(window.I18n&&window.I18n.get()==='en'?q.dataset.expEn:q.dataset.expZh);}else{fb.className='quiz-feedback show wrong-fb';fb.textContent='✗ '+(window.I18n&&window.I18n.get()==='en'?q.dataset.expEn:q.dataset.expZh);}};});});
+// isoform sim
+const cv=document.getElementById('liCv'),ctx=cv.getContext('2d');
+function draw(){
+  const L=+document.getElementById('liL').value,I=+document.getElementById('liI').value;
+  document.getElementById('liLv').textContent=L;document.getElementById('liIv').textContent=I;
+  const w=cv.width=cv.offsetWidth,h=cv.height=cv.offsetHeight;
+  ctx.fillStyle='#eef5f7';ctx.fillRect(0,0,w,h);
+  // draw a gene with I isoforms (avg 2000 bp)
+  const geneLen=2000;
+  const isoH=Math.max(8,Math.min(20,(h-30)/I));
+  for(let i=0;i<I;i++){
+    const y=10+i*(isoH+3);
+    ctx.fillStyle='#cffafe';ctx.fillRect(20,y,w-40,isoH);
+    // exons (5-8 random rectangles)
+    const nE=4+Math.floor(Math.random()*3);
+    for(let e=0;e<nE;e++){
+      const ex=20+(e+0.1+Math.random()*0.6)/nE*(w-40);
+      const ew=(w-40)/nE*0.6;
+      ctx.fillStyle='#0e7490';ctx.fillRect(ex,y,ew,isoH);
+    }
+  }
+  // read length overlay
+  ctx.strokeStyle='#f97316';ctx.lineWidth=2;
+  const rW=Math.min(w-40,L/geneLen*(w-40));
+  ctx.strokeRect(20,h-12,rW,8);
+  ctx.fillStyle='#f97316';ctx.font='10px sans-serif';ctx.fillText('read coverage',24,h-15);
+  // detection rate (simplified)
+  const det=Math.min(0.95,L/(geneLen*1.2)*(1-Math.min(0.5,I/30)));
+  const amb=Math.max(1,I*(1-det));
+  document.getElementById('liR').textContent='Detection: '+(det*100).toFixed(0)+'%';
+  document.getElementById('liA').textContent='Avg ambig: '+amb.toFixed(1);
+}
+['liL','liI'].forEach(id=>document.getElementById(id).oninput=draw);
+window.addEventListener('resize',draw);setTimeout(draw,50);
+</script>
+</body></html>

@@ -1,0 +1,183 @@
+<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Ch 3: 上游 FASTQ→counts — HTBA</title>
+<link rel="stylesheet" href="styles.css">
+</head><body>
+<nav class="top-nav"><div class="top-nav-inner">
+  <a href="index.html" class="top-nav-brand"><span>🧬</span> <span data-zh="高通量分析與整合" data-en="HTBA Tutorial">高通量分析與整合</span></a>
+  <ul class="top-nav-links">
+    <li><a href="01-overview.html">01</a></li><li><a href="02-experimental-design.html">02</a></li><li><a href="03-upstream-pipeline.html" class="active">03</a></li><li><a href="04-genomics-variants.html">04</a></li><li><a href="05-structural-variants.html">05</a></li><li><a href="06-atac-cutrun.html">06</a></li><li><a href="07-dna-methylation.html">07</a></li><li><a href="08-bulk-rnaseq.html">08</a></li><li><a href="09-scrnaseq.html">09</a></li><li><a href="10-spatial-omics.html">10</a></li><li><a href="11-long-read-rna.html">11</a></li><li><a href="12-proteomics.html">12</a></li><li><a href="13-metabolomics.html">13</a></li><li><a href="14-batch-correction.html">14</a></li><li><a href="15-multiomics-integration.html">15</a></li><li><a href="16-spatial-singlecell.html">16</a></li><li><a href="17-functional-enrichment.html">17</a></li><li><a href="18-network-analysis.html">18</a></li><li><a href="19-foundation-models.html">19</a></li><li><a href="20-reproducibility.html">20</a></li>
+    <li><a href="references/index.html" data-zh="📚 參考資料" data-en="📚 References">📚 參考資料</a></li>
+  </ul>
+</div></nav>
+<div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
+
+<header class="page-hero"><div class="step-badge">CH 3 / 20 · BLOCK 1 FOUNDATIONS</div>
+<h1 data-zh="FASTQ → counts 上游流程" data-en="FASTQ → Counts Upstream Pipeline">FASTQ → counts 上游流程</h1>
+<p class="subtitle" data-lang="zh">所有組學分析的共同地基。QC、trimming、比對、量化、報告整合 — 用 nf-core 一鍵跑完。</p>
+<p class="subtitle" data-lang="en">The common bedrock for all omics. QC, trimming, alignment, quantification, reporting — run end-to-end with nf-core.</p>
+</header>
+
+<main class="content-wrap">
+
+<section class="section">
+<div class="section-label" data-zh="總覽" data-en="OVERVIEW">總覽</div>
+<h2 data-zh="一、上游流程拆解" data-en="I. Upstream Pipeline Anatomy">一、上游流程拆解</h2>
+<div class="workflow">
+<div class="workflow-step" data-step="1"><h4>FastQC + MultiQC</h4><p data-lang="zh">原始 reads 的 per-base quality、adapter content、duplication。MultiQC 將數十個樣本 QC 摘要彙整成一頁 HTML。</p><p data-lang="en">Per-base quality, adapter content, duplication of raw reads. MultiQC aggregates dozens of samples into one HTML report.</p></div>
+<div class="workflow-step" data-step="2"><h4 data-zh="Adapter / 品質修剪" data-en="Adapter / quality trimming">修剪</h4><p data-lang="zh">Trimmomatic、cutadapt、<strong>fastp</strong>（推薦：快、整合 QC、UMI 支援）、Trim Galore。經驗法則：Q20 滑動視窗 + 移除過短 reads (&lt;36 bp)。</p><p data-lang="en">Trimmomatic, cutadapt, <strong>fastp</strong> (recommended: fast, integrated QC, UMI support), Trim Galore. Rule of thumb: Q20 sliding window + drop reads &lt;36 bp.</p></div>
+<div class="workflow-step" data-step="3"><h4 data-zh="比對 / 偽比對" data-en="Alignment / pseudoalignment">比對</h4><p data-lang="zh">DNA: <strong>bwa-mem2</strong>、minimap2（長讀）；RNA: <strong>STAR</strong>、HISAT2；pseudoalignment: <strong>Salmon</strong>、kallisto；scRNA: <strong>STARsolo</strong>、Cell Ranger、alevin-fry。</p><p data-lang="en">DNA: <strong>bwa-mem2</strong>, minimap2 (long-read); RNA: <strong>STAR</strong>, HISAT2; pseudoalignment: <strong>Salmon</strong>, kallisto; scRNA: <strong>STARsolo</strong>, Cell Ranger, alevin-fry.</p></div>
+<div class="workflow-step" data-step="4"><h4 data-zh="後處理：sort / dedup / BQSR" data-en="Post-processing">後處理</h4><p data-lang="zh">samtools sort、Picard / GATK MarkDuplicates、GATK BQSR（DNA）、splice-aware merge（RNA）。產出 analysis-ready BAM/CRAM。</p><p data-lang="en">samtools sort, Picard / GATK MarkDuplicates, GATK BQSR (DNA), splice-aware merge (RNA). Outputs analysis-ready BAM/CRAM.</p></div>
+<div class="workflow-step" data-step="5"><h4 data-zh="量化 / 變異呼叫" data-en="Quantification / variant calling">量化</h4><p data-lang="zh">featureCounts、HTSeq、Salmon (transcript-level)、HaplotypeCaller、DeepVariant、MACS2（peaks）、Bismark methylation extractor。</p><p data-lang="en">featureCounts, HTSeq, Salmon (transcript-level), HaplotypeCaller, DeepVariant, MACS2 (peaks), Bismark methylation extractor.</p></div>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="工具選型" data-en="TOOL SELECTION">工具選型</div>
+<h2 data-zh="二、比對器選型比較" data-en="II. Aligner Comparison">二、比對器選型</h2>
+<table class="comp-table">
+<thead><tr><th data-zh="工具" data-en="Tool">工具</th><th data-zh="場景" data-en="Use case">場景</th><th data-zh="速度" data-en="Speed">速度</th><th data-zh="記憶體" data-en="RAM">RAM</th><th data-zh="特性" data-en="Notes">特性</th></tr></thead>
+<tbody>
+<tr><td><strong>bwa-mem2</strong></td><td>DNA / WGS / WES</td><td>★★★★</td><td>~30 GB human</td><td data-zh="bwa-mem 的 SIMD 加速版，事實標準" data-en="SIMD-accelerated bwa-mem; de facto standard">事實標準</td></tr>
+<tr><td><strong>minimap2</strong></td><td data-zh="長讀 DNA/RNA" data-en="Long-read DNA/RNA">長讀</td><td>★★★★★</td><td data-zh="低（~10 GB）" data-en="Low (~10 GB)">低</td><td data-zh="PacBio + ONT 通用，全長 isoform 支援" data-en="PacBio + ONT, full-length isoform support">PacBio + ONT</td></tr>
+<tr><td><strong>STAR</strong></td><td>Bulk / scRNA</td><td>★★★★</td><td data-zh="~30 GB human" data-en="~30 GB human">~30 GB</td><td data-zh="splice-aware，2-pass 偵測 novel junction" data-en="Splice-aware, 2-pass for novel junctions">splice-aware</td></tr>
+<tr><td><strong>HISAT2</strong></td><td>RNA / WGBS</td><td>★★★</td><td data-zh="低（~8 GB）" data-en="Low (~8 GB)">低</td><td data-zh="graph-based 索引，小記憶體" data-en="Graph-based index, low memory">graph-based</td></tr>
+<tr><td><strong>Salmon / kallisto</strong></td><td data-zh="RNA 表達量化" data-en="RNA quantification">RNA 量化</td><td>★★★★★</td><td data-zh="~6 GB" data-en="~6 GB">低</td><td data-zh="不產 BAM，selective alignment，bias correction" data-en="No BAM, selective alignment, bias correction">無 BAM</td></tr>
+<tr><td><strong>STARsolo / alevin-fry</strong></td><td>scRNA / CITE</td><td>★★★★</td><td>~32 GB</td><td data-zh="替代 Cell Ranger，10X / SMART-seq" data-en="Cell Ranger alternative, 10X / SMART-seq">替代 Cell Ranger</td></tr>
+</tbody></table>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="互動模擬" data-en="INTERACTIVE">互動模擬</div>
+<h2 data-zh="三、Phred score 視覺化" data-en="III. Phred Score Visualizer">三、Phred score 視覺化</h2>
+<div data-lang="zh"><p>調整 Q 值看錯誤率 P：P = 10<sup>−Q/10</sup>。Q20 表示 1% 錯誤、Q30 表示 0.1% 錯誤；trimming 常用閾值 Q20–Q30。</p></div>
+<div data-lang="en"><p>Move Q to see error probability P = 10<sup>−Q/10</sup>. Q20 = 1% error, Q30 = 0.1%; common trimming thresholds are Q20–Q30.</p></div>
+<div class="interactive-panel">
+<div class="sim-stats"><span class="sim-stat pass" id="qS1">Q: —</span><span class="sim-stat warn" id="qS2">P(err): —</span><span class="sim-stat" id="qS3">—</span></div>
+<div class="slider-group"><label><span>Q score</span><span id="qV">30</span></label><input type="range" id="qSl" min="2" max="50" value="30" step="1"></div>
+<div class="formula" id="qFormula">P = 10<sup>−Q/10</sup> = 0.001 = <strong>0.1%</strong> error</div>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="管線" data-en="PIPELINES">管線</div>
+<h2 data-zh="四、用 nf-core 取代手刻 shell script" data-en="IV. Replace Hand-rolled Shell Scripts with nf-core">四、nf-core 一鍵管線</h2>
+<div data-lang="zh"><p><a href="https://nf-co.re" target="_blank" rel="noopener">nf-core</a> 是 community-curated Nextflow 管線集，每個流程都有 CI 測試、Docker/Singularity 容器、版本標籤與 ENA/SRA 整合。</p><p><strong>常用管線：</strong></p>
+<ul><li><code>nf-core/rnaseq</code> — Bulk RNA-seq (Salmon + STAR + featureCounts + MultiQC)</li><li><code>nf-core/scrnaseq</code> — Cell Ranger / STARsolo / alevin-fry</li><li><code>nf-core/sarek</code> — WGS/WES germline + somatic（GATK/DeepVariant/Strelka）</li><li><code>nf-core/atacseq</code>、<code>nf-core/chipseq</code> — peak calling 全流程</li><li><code>nf-core/methylseq</code> — Bismark / bwa-meth</li><li><code>nf-core/fetchngs</code> — 自動從 SRA/ENA/GEO 抓資料 + metadata</li></ul></div>
+<div data-lang="en"><p><a href="https://nf-co.re" target="_blank" rel="noopener">nf-core</a> is the community-curated Nextflow pipeline collection — every workflow has CI tests, Docker/Singularity containers, versioned releases, and ENA/SRA integration.</p><p><strong>Popular pipelines:</strong></p>
+<ul><li><code>nf-core/rnaseq</code> — Bulk RNA-seq (Salmon + STAR + featureCounts + MultiQC)</li><li><code>nf-core/scrnaseq</code> — Cell Ranger / STARsolo / alevin-fry</li><li><code>nf-core/sarek</code> — WGS/WES germline + somatic (GATK/DeepVariant/Strelka)</li><li><code>nf-core/atacseq</code>, <code>nf-core/chipseq</code> — end-to-end peak calling</li><li><code>nf-core/methylseq</code> — Bismark / bwa-meth</li><li><code>nf-core/fetchngs</code> — auto-fetch from SRA/ENA/GEO with metadata</li></ul></div>
+<div class="callout tip"><span class="callout-icon">💡</span><div>
+<span data-lang="zh">替代品：Snakemake-Wrappers、Galaxy、Cromwell + WDL（Broad / Terra 生態）。研究團隊請優先採用社群管線而非自寫 — 重現性與升級成本差異巨大。</span>
+<span data-lang="en">Alternatives: Snakemake-Wrappers, Galaxy, Cromwell + WDL (Broad / Terra). Prefer community pipelines over hand-rolled — the gap in reproducibility and upgrade cost is huge.</span>
+</div></div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="程式碼" data-en="CODE">程式碼</div>
+<h2 data-zh="五、完整 RNA-seq 上游實作" data-en="V. Complete RNA-seq Upstream Code">五、完整 RNA-seq 上游</h2>
+<div class="code-tabs"><div class="code-tab-btns"><button class="code-tab-btn active" onclick="switchTab(this,'sh1')">Shell / 手刻</button><button class="code-tab-btn" onclick="switchTab(this,'nf1')">nf-core/rnaseq</button><button class="code-tab-btn" onclick="switchTab(this,'sm1')">Snakemake</button></div>
+<div class="code-tab-content active" id="sh1"><pre><span class="comment"># 1. QC + trim</span>
+<span class="func">fastp</span> -i sample_R1.fq.gz -I sample_R2.fq.gz \
+      -o trim_R1.fq.gz -O trim_R2.fq.gz \
+      -q <span class="num">20</span> -l <span class="num">36</span> -j sample.json -h sample.html
+
+<span class="comment"># 2. STAR 比對（2-pass）</span>
+<span class="func">STAR</span> --runThreadN <span class="num">16</span> --genomeDir GRCh38_index/ \
+     --readFilesIn trim_R1.fq.gz trim_R2.fq.gz \
+     --readFilesCommand zcat --twopassMode Basic \
+     --outSAMtype BAM SortedByCoordinate \
+     --outFileNamePrefix sample.
+
+<span class="comment"># 3. 計數</span>
+<span class="func">featureCounts</span> -T <span class="num">16</span> -a GRCh38.gtf -o counts.txt \
+            -p --countReadPairs sample.Aligned.sortedByCoord.out.bam
+
+<span class="comment"># 4. MultiQC 報告</span>
+<span class="func">multiqc</span> .</pre></div>
+<div class="code-tab-content" id="nf1"><pre><span class="comment"># nf-core/rnaseq — 一個指令跑完所有步驟</span>
+<span class="comment"># 安裝：conda install -c bioconda nextflow nf-core</span>
+<span class="func">nextflow</span> run nf-core/rnaseq \
+    -r <span class="num">3.16</span>.<span class="num">0</span> \
+    --input samplesheet.csv \
+    --outdir results/ \
+    --genome GRCh38 \
+    --aligner star_salmon \
+    -profile docker \
+    -resume
+
+<span class="comment"># samplesheet.csv 範例：</span>
+<span class="comment"># sample,fastq_1,fastq_2,strandedness</span>
+<span class="comment"># CTRL_1,ctrl1_R1.fq.gz,ctrl1_R2.fq.gz,reverse</span>
+<span class="comment"># CTRL_2,ctrl2_R1.fq.gz,ctrl2_R2.fq.gz,reverse</span>
+<span class="comment"># TRT_1,trt1_R1.fq.gz,trt1_R2.fq.gz,reverse</span></pre></div>
+<div class="code-tab-content" id="sm1"><pre><span class="comment"># Snakefile — 用 wildcards 自動展開到所有樣本</span>
+SAMPLES = [<span class="str">"CTRL_1"</span>, <span class="str">"CTRL_2"</span>, <span class="str">"TRT_1"</span>, <span class="str">"TRT_2"</span>]
+
+<span class="kw">rule</span> all:
+    input: <span class="str">"results/counts.tsv"</span>, <span class="str">"results/multiqc_report.html"</span>
+
+<span class="kw">rule</span> fastp:
+    input: r1=<span class="str">"raw/{sample}_R1.fq.gz"</span>, r2=<span class="str">"raw/{sample}_R2.fq.gz"</span>
+    output: r1=<span class="str">"trim/{sample}_R1.fq.gz"</span>, r2=<span class="str">"trim/{sample}_R2.fq.gz"</span>,
+            j=<span class="str">"qc/{sample}.json"</span>
+    shell: <span class="str">"fastp -i {input.r1} -I {input.r2} -o {output.r1} -O {output.r2} -j {output.j}"</span>
+
+<span class="kw">rule</span> star:
+    input: r1=<span class="str">"trim/{sample}_R1.fq.gz"</span>, r2=<span class="str">"trim/{sample}_R2.fq.gz"</span>
+    output: <span class="str">"bam/{sample}.bam"</span>
+    threads: <span class="num">16</span>
+    shell: <span class="str">"STAR --runThreadN {threads} --genomeDir idx/ "</span>
+           <span class="str">"--readFilesIn {input.r1} {input.r2} --readFilesCommand zcat "</span>
+           <span class="str">"--outSAMtype BAM SortedByCoordinate "</span>
+           <span class="str">"--outFileNamePrefix bam/{wildcards.sample}."</span>
+<span class="comment"># … rule featurecounts, rule multiqc 略</span></pre></div>
+</div>
+</section>
+
+<section class="quiz-section">
+<h3>📝 <span data-zh="自我檢測" data-en="Self-Check">自我檢測</span></h3>
+<div class="quiz-q" data-answer="0" data-exp-zh="Salmon 用 selective alignment 直接量化到 transcript，速度快、不需要 BAM。" data-exp-en="Salmon uses selective alignment to quantify directly at transcript level — fast, no BAM required.">
+<p data-lang="zh">1. 想要最快取得 RNA-seq transcript-level 量化、不需要 BAM 檔，最佳選擇？</p>
+<p data-lang="en">1. Fastest way to get transcript-level RNA-seq quantification without BAM?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">Salmon</div><div class="quiz-opt" data-idx="1">bwa-mem2</div><div class="quiz-opt" data-idx="2">Bismark</div><div class="quiz-opt" data-idx="3">DeepVariant</div>
+</div><div class="quiz-feedback"></div></div>
+<div class="quiz-q" data-answer="1" data-exp-zh="Q30 = 10^(-3) = 0.1% 錯誤機率，是 Illumina 常見的高品質閾值。" data-exp-en="Q30 = 10^(-3) = 0.1% error — Illumina's typical high-quality threshold.">
+<p data-lang="zh">2. Phred Q30 對應的錯誤率？</p>
+<p data-lang="en">2. Error rate corresponding to Phred Q30?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">1%</div><div class="quiz-opt" data-idx="1">0.1%</div><div class="quiz-opt" data-idx="2">0.01%</div><div class="quiz-opt" data-idx="3">30%</div>
+</div><div class="quiz-feedback"></div></div>
+<div class="quiz-q" data-answer="3" data-exp-zh="nf-core/sarek 是 GATK/DeepVariant/Strelka 的整合管線，包含 germline 與 somatic。" data-exp-en="nf-core/sarek bundles GATK/DeepVariant/Strelka for germline and somatic variant calling.">
+<p data-lang="zh">3. 想跑 WGS germline + somatic 變異呼叫的 nf-core 管線是？</p>
+<p data-lang="en">3. nf-core pipeline for WGS germline + somatic variant calling?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">rnaseq</div><div class="quiz-opt" data-idx="1">atacseq</div><div class="quiz-opt" data-idx="2">methylseq</div><div class="quiz-opt" data-idx="3">sarek</div>
+</div><div class="quiz-feedback"></div></div>
+</section>
+
+<nav class="page-nav">
+<a href="02-experimental-design.html"><span class="nav-dir" data-zh="← 上一章" data-en="← Prev">← 上一章</span><span class="nav-title" data-zh="Ch 2 · 實驗設計與功率分析" data-en="Ch 2 · Experimental Design &amp; Power Analysis">Ch 2 · 實驗設計與功率分析</span></a>
+<a href="04-genomics-variants.html"><span class="nav-dir" data-zh="下一章 →" data-en="Next →">下一章 →</span><span class="nav-title" data-zh="Ch 4 · 變異偵測與註釋 (SNV / Indel)" data-en="Ch 4 · Variant Calling &amp; Annotation (SNV / Indel)">Ch 4 · 變異偵測與註釋 (SNV / Indel)</span></a>
+</nav>
+</main>
+
+<footer class="site-footer">© Charlene — HTBA Interactive Tutorial</footer>
+<script src="i18n.js"></script>
+<script>
+window.addEventListener('scroll',()=>{const h=document.documentElement;document.getElementById('progressBar').style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100+'%';});
+function switchTab(b,id){const p=b.closest('.code-tabs');p.querySelectorAll('.code-tab-btn').forEach(x=>x.classList.remove('active'));p.querySelectorAll('.code-tab-content').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById(id).classList.add('active');}
+document.querySelectorAll('.quiz-q').forEach(q=>{const ans=+q.dataset.answer;q.querySelectorAll('.quiz-opt').forEach(o=>{o.onclick=()=>{if(q.dataset.done)return;q.dataset.done=1;const i=+o.dataset.idx,fb=q.querySelector('.quiz-feedback');q.querySelectorAll('.quiz-opt').forEach(x=>{if(+x.dataset.idx===ans)x.classList.add('correct');else if(+x.dataset.idx===i)x.classList.add('wrong');});if(i===ans){fb.className='quiz-feedback show correct-fb';fb.textContent='✓ '+(window.I18n&&window.I18n.get()==='en'?q.dataset.expEn:q.dataset.expZh);}else{fb.className='quiz-feedback show wrong-fb';fb.textContent='✗ '+(window.I18n&&window.I18n.get()==='en'?q.dataset.expEn:q.dataset.expZh);}};});});
+// Phred slider
+function updQ(){
+  const q=+document.getElementById('qSl').value;
+  const p=Math.pow(10,-q/10);
+  document.getElementById('qV').textContent=q;
+  document.getElementById('qS1').textContent='Q: '+q;
+  document.getElementById('qS2').textContent='P(err): '+(p*100).toExponential(1).replace('e','×10')+'%';
+  document.getElementById('qS3').textContent=q>=30?'High quality ✓':(q>=20?'Acceptable':'Drop / trim');
+  document.getElementById('qS3').className='sim-stat '+(q>=30?'pass':(q>=20?'warn':'fail'));
+  document.getElementById('qFormula').innerHTML='P = 10<sup>−Q/10</sup> = '+p.toExponential(2)+' = <strong>'+(p*100).toFixed(p<.001?4:2)+'%</strong> error';
+}
+document.getElementById('qSl').oninput=updQ;updQ();
+</script>
+</body></html>

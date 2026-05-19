@@ -1,0 +1,164 @@
+<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Ch 20: 可重現性、雲端與倫理 — HTBA</title>
+<link rel="stylesheet" href="styles.css">
+</head><body>
+<nav class="top-nav"><div class="top-nav-inner">
+  <a href="index.html" class="top-nav-brand"><span>🧬</span> <span data-zh="高通量分析與整合" data-en="HTBA Tutorial">高通量分析與整合</span></a>
+  <ul class="top-nav-links"><li><a href="01-overview.html">01</a></li><li><a href="02-experimental-design.html">02</a></li><li><a href="03-upstream-pipeline.html">03</a></li><li><a href="04-genomics-variants.html">04</a></li><li><a href="05-structural-variants.html">05</a></li><li><a href="06-atac-cutrun.html">06</a></li><li><a href="07-dna-methylation.html">07</a></li><li><a href="08-bulk-rnaseq.html">08</a></li><li><a href="09-scrnaseq.html">09</a></li><li><a href="10-spatial-omics.html">10</a></li><li><a href="11-long-read-rna.html">11</a></li><li><a href="12-proteomics.html">12</a></li><li><a href="13-metabolomics.html">13</a></li><li><a href="14-batch-correction.html">14</a></li><li><a href="15-multiomics-integration.html">15</a></li><li><a href="16-spatial-singlecell.html">16</a></li><li><a href="17-functional-enrichment.html">17</a></li><li><a href="18-network-analysis.html">18</a></li><li><a href="19-foundation-models.html">19</a></li><li><a href="20-reproducibility.html" class="active">20</a></li>
+    <li><a href="references/index.html" data-zh="📚 參考資料" data-en="📚 References">📚 參考資料</a></li>
+  </ul>
+</div></nav>
+<div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
+
+<header class="page-hero"><div class="step-badge">CH 20 / 20 · BLOCK 6 DEPLOYMENT & ETHICS</div>
+<h1 data-zh="可重現性、雲端與倫理" data-en="Reproducibility, Cloud & Ethics">可重現性、雲端與倫理</h1>
+<p class="subtitle" data-lang="zh">Snakemake / Nextflow、Singularity、dbGaP / EGA、IRB、ELSI、EU AI Act — 把研究做得能被別人重做、用得安全。</p>
+<p class="subtitle" data-lang="en">Snakemake / Nextflow, Singularity, dbGaP / EGA, IRB, ELSI, EU AI Act — make your research reproducible and ethically deployable.</p>
+</header>
+
+<main class="content-wrap">
+
+<section class="section">
+<div class="section-label" data-zh="可重現性堆疊" data-en="REPRO STACK">可重現性</h2>
+<h2 data-zh="一、可重現性的五層堆疊" data-en="I. The Five-Layer Reproducibility Stack">一、五層堆疊</h2>
+<div class="workflow">
+<div class="workflow-step" data-step="1"><h4 data-zh="版本控制 / Version control" data-en="Version control">版本控制</h4><p data-lang="zh">Git + GitHub / GitLab；包括 code、metadata、analysis notes。大檔案用 git-lfs / DVC / OSF。</p><p data-lang="en">Git + GitHub / GitLab; covers code, metadata, analysis notes. Large files via git-lfs / DVC / OSF.</p></div>
+<div class="workflow-step" data-step="2"><h4 data-zh="環境管理 / Environment" data-en="Environment">環境</h4><p data-lang="zh"><strong>Conda / Mamba / Pixi</strong>（Python+R 套件）、<strong>renv</strong>（R 專屬 lockfile）、<strong>uv</strong>（Python 快速 venv）、<strong>Bioconductor 版本鎖</strong>。</p><p data-lang="en"><strong>Conda / Mamba / Pixi</strong> (Python+R), <strong>renv</strong> (R lockfile), <strong>uv</strong> (fast Python venv), <strong>Bioconductor version lock</strong>.</p></div>
+<div class="workflow-step" data-step="3"><h4 data-zh="容器 / Containers" data-en="Containers">容器</h4><p data-lang="zh"><strong>Docker</strong>（本地 / 雲）、<strong>Singularity / Apptainer</strong>（HPC 與 root-less）、<strong>BioContainers</strong> 提供 Bioconda 套件對應 image。</p><p data-lang="en"><strong>Docker</strong> (local/cloud), <strong>Singularity / Apptainer</strong> (HPC, root-less), <strong>BioContainers</strong> for Bioconda-equivalent images.</p></div>
+<div class="workflow-step" data-step="4"><h4 data-zh="管線 / Pipelines" data-en="Pipelines">管線</h4><p data-lang="zh"><strong>Nextflow</strong>（DSL2 + nf-core）、<strong>Snakemake</strong>（Python DSL）、<strong>Cromwell + WDL</strong>（Broad / Terra）、<strong>Galaxy</strong>（GUI）。</p><p data-lang="en"><strong>Nextflow</strong> (DSL2 + nf-core), <strong>Snakemake</strong> (Python DSL), <strong>Cromwell + WDL</strong> (Broad / Terra), <strong>Galaxy</strong> (GUI).</p></div>
+<div class="workflow-step" data-step="5"><h4 data-zh="報告 / Reporting" data-en="Reporting">報告</h4><p data-lang="zh"><strong>Quarto</strong>（R / Python / Julia 通用）、<strong>R Markdown</strong>、<strong>Jupyter</strong>、<strong>MultiQC</strong>（QC 報告整合）。</p><p data-lang="en"><strong>Quarto</strong> (R/Python/Julia), <strong>R Markdown</strong>, <strong>Jupyter</strong>, <strong>MultiQC</strong> (QC aggregation).</p></div>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="雲端與 HPC" data-en="CLOUD & HPC">雲端</h2>
+<h2 data-zh="二、雲端 / HPC 部署" data-en="II. Cloud / HPC Deployment">二、雲端與 HPC</h2>
+<div class="card-grid cols-3">
+<div class="card"><h4>☁️ <span data-zh="公雲生醫平台" data-en="Public bio-clouds">公雲生醫平台</span></h4><p data-lang="zh"><strong>Terra</strong>（Broad）、<strong>DNAnexus</strong>、<strong>AnVIL</strong>（NHGRI）、<strong>Seven Bridges CGC</strong>、<strong>All of Us Researcher Workbench</strong>。資料受控存取在雲端不下載到本機。</p></div>
+<div class="card"><h4>🖥️ <span data-zh="HPC 排程" data-en="HPC schedulers">HPC 排程</span></h4><p data-lang="zh"><strong>Slurm</strong>（最普遍）、<strong>SGE / PBS / LSF</strong>。Nextflow / Snakemake 都有 executor 直接送 job。</p></div>
+<div class="card"><h4>🚀 <span data-zh="GPU 與 AI 訓練" data-en="GPU / AI training">GPU 訓練</span></h4><p data-lang="zh"><strong>RTX 6000 Ada / H100 / B200</strong>；用 <strong>PyTorch Lightning</strong>、<strong>NVIDIA Parabricks</strong>（GPU GATK）、<strong>RAPIDS</strong>（cuDF / cuML）加速。</p></div>
+<div class="card"><h4>📡 <span data-zh="即時資料 streaming" data-en="Streaming data">資料 streaming</span></h4><p data-lang="zh">ONT MinKNOW 即時 basecalling、Illumina BaseSpace、AWS HealthOmics 物件儲存。</p></div>
+<div class="card"><h4>💰 <span data-zh="成本管理" data-en="Cost mgmt">成本管理</span></h4><p data-lang="zh">spot instance、auto-scaling、cold storage（Glacier）、egress 費用最易暴衝。先做 dry-run 試算。</p></div>
+<div class="card"><h4>🔐 <span data-zh="安全與合規" data-en="Security & compliance">安全</span></h4><p data-lang="zh">HIPAA、GDPR、TWN PIPA。受控存取用 dbGaP / EGA token；雲端啟用 KMS encryption + VPC private subnet。</p></div>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="倫理與隱私" data-en="ETHICS & PRIVACY">倫理</h2>
+<h2 data-zh="三、生醫資料倫理 (ELSI)" data-en="III. Bio Data Ethics (ELSI)">三、倫理與隱私</h2>
+<div data-lang="zh">
+<p><strong>IRB / 倫委會：</strong>任何涉及人類受試者的高通量資料都需先過 IRB；二次分析 deidentified 公開資料常可申請 exemption。</p>
+<p><strong>知情同意：</strong>NIH 自 2024 起 Data Management & Sharing Plan 為強制要求；同意書要含「未來其他用途」與「可否撤回」。</p>
+<p><strong>再識別風險：</strong>基因組 + 鄰近家族成員 ≥ 30 SNPs 就可能被 re-identify。差分隱私 (DP) 與安全多方計算 (SMC / TEE) 是當前趨勢。</p>
+<p><strong>EU AI Act（2024/1689，2024 通過、2026 全面適用）：</strong>把醫療診斷 AI 歸為 high-risk，需做 risk management、data governance、human oversight、post-market monitoring。FDA 自 2023 也有 PCCP (Predetermined Change Control Plan) 規範持續學習模型。</p>
+<p><strong>公平性：</strong>Obermeyer et al. 2019 Science 顯示醫療演算法可能複製族裔偏見；Bias audit、CONSORT-AI / SPIRIT-AI 報告準則是必要實踐。</p>
+</div>
+<div data-lang="en">
+<p><strong>IRB:</strong> Human-subject high-throughput data needs IRB approval upfront; secondary analyses of deidentified public data often qualify for exemption.</p>
+<p><strong>Informed consent:</strong> NIH Data Management & Sharing Plan has been mandatory since 2024; consent must cover "future other uses" and "withdrawal."</p>
+<p><strong>Re-identification risk:</strong> Genome + close-relative pedigree at ≥30 SNPs can re-identify subjects. Differential privacy (DP), secure multiparty computation (SMC / TEE) are trending defenses.</p>
+<p><strong>EU AI Act (2024/1689):</strong> diagnostic AI is high-risk — requires risk management, data governance, human oversight, post-market monitoring. FDA's PCCP (since 2023) governs continuously learning models.</p>
+<p><strong>Fairness:</strong> Obermeyer et al. (Science 2019) showed clinical algorithms can replicate ethnic bias; bias audits and CONSORT-AI / SPIRIT-AI reporting standards are essential.</p>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="互動清單" data-en="CHECKLIST">互動</h2>
+<h2 data-zh="四、論文提交前可重現性檢查表" data-en="IV. Pre-submission Reproducibility Checklist">四、論文檢查表</h2>
+<div class="interactive-panel">
+<div id="repBoxes" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:6px"></div>
+<div class="sim-stats" style="margin-top:14px"><span class="sim-stat pass" id="repScore">Score: 0 / 10</span><span class="sim-stat warn" id="repCl">Status: incomplete</span></div>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="程式碼" data-en="CODE">程式碼</div>
+<h2 data-zh="五、Snakemake / Nextflow / Apptainer 範例" data-en="V. Snakemake / Nextflow / Apptainer Examples">五、實作</h2>
+<div class="code-tabs"><div class="code-tab-btns"><button class="code-tab-btn active" onclick="switchTab(this,'sh1')">Shell / nf-core</button><button class="code-tab-btn" onclick="switchTab(this,'sm1')">Snakemake</button><button class="code-tab-btn" onclick="switchTab(this,'sm2')">Apptainer + Pixi</button></div>
+<div class="code-tab-content active" id="sh1"><pre><span class="comment"># nf-core/rnaseq 在 HPC + Singularity</span>
+<span class="func">nextflow</span> run nf-core/rnaseq -r <span class="num">3.16</span>.<span class="num">0</span> \
+        --input samplesheet.csv --outdir results/ \
+        --genome GRCh38 --aligner star_salmon \
+        -profile singularity,slurm \
+        -resume
+
+<span class="comment"># 在 AWS HealthOmics 或 Terra 上執行（節省成本）</span>
+<span class="func">nextflow</span> run nf-core/rnaseq -profile awsbatch \
+        --awsregion us-east-1 --awsqueue arn:aws:batch:...</pre></div>
+<div class="code-tab-content" id="sm1"><pre><span class="comment"># Snakemake — 強型別 + auto-deploy conda env</span>
+<span class="comment"># config.yaml + Snakefile</span>
+<span class="kw">configfile</span>: <span class="str">"config.yaml"</span>
+
+<span class="kw">rule</span> all:
+    input: <span class="func">expand</span>(<span class="str">"qc/{s}.html"</span>, s=config[<span class="str">"samples"</span>])
+
+<span class="kw">rule</span> fastqc:
+    input: <span class="str">"raw/{s}.fq.gz"</span>
+    output: <span class="str">"qc/{s}.html"</span>
+    <span class="kw">conda</span>: <span class="str">"envs/fastqc.yaml"</span>   <span class="comment"># 自動建環境</span>
+    <span class="kw">container</span>: <span class="str">"docker://biocontainers/fastqc:v0.12.1"</span>
+    <span class="kw">resources</span>: mem_mb=<span class="num">4000</span>, runtime=<span class="num">30</span>
+    shell: <span class="str">"fastqc -o qc/ {input}"</span>
+
+<span class="comment"># 執行</span>
+<span class="comment"># snakemake --use-conda --cores 16</span>
+<span class="comment"># snakemake --use-singularity --slurm</span></pre></div>
+<div class="code-tab-content" id="sm2"><pre><span class="comment"># Apptainer — root-less HPC 友善</span>
+<span class="func">apptainer</span> build samtools.sif docker://staphb/samtools:1.20
+
+<span class="comment"># 執行</span>
+<span class="func">apptainer</span> exec --bind /data:/data samtools.sif \
+          samtools view -b -q <span class="num">30</span> input.bam &gt; out.bam
+
+<span class="comment"># Pixi — 跨平台 conda + lockfile</span>
+<span class="func">pixi</span> init my-analysis
+<span class="kw">cd</span> my-analysis
+<span class="func">pixi</span> add -c bioconda samtools=1.20 bcftools=1.21 nextflow
+<span class="func">pixi</span> run snakemake --cores <span class="num">8</span>
+
+<span class="comment"># 自動產生 pixi.lock，git commit 即可跨機器還原</span></pre></div>
+</div>
+</section>
+
+<section class="quiz-section">
+<h3>📝 <span data-zh="自我檢測" data-en="Self-Check">自我檢測</span></h3>
+<div class="quiz-q" data-answer="0" data-exp-zh="Singularity / Apptainer 是 HPC 上的 root-less container 主流，避免 Docker 需要 sudo 的問題。" data-exp-en="Singularity / Apptainer is the root-less container standard on HPC — avoids Docker's sudo requirement.">
+<p data-lang="zh">1. HPC 環境下最常用的 container 工具？</p>
+<p data-lang="en">1. Most common container tool on HPC?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">Singularity / Apptainer</div><div class="quiz-opt" data-idx="1">Docker desktop</div><div class="quiz-opt" data-idx="2">vagrant</div><div class="quiz-opt" data-idx="3">VirtualBox</div>
+</div><div class="quiz-feedback"></div></div>
+<div class="quiz-q" data-answer="3" data-exp-zh="EU AI Act (Regulation 2024/1689) 把醫療診斷 AI 列為 high-risk，需嚴格 governance。" data-exp-en="The EU AI Act (Regulation 2024/1689) classifies diagnostic AI as high-risk, requiring strict governance.">
+<p data-lang="zh">2. EU 2024 通過的法規把醫療診斷 AI 列為哪種風險？</p>
+<p data-lang="en">2. The 2024 EU regulation classifies diagnostic AI as what risk class?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0"><span data-lang="zh">無風險</span><span data-lang="en">No risk</span></div><div class="quiz-opt" data-idx="1"><span data-lang="zh">低風險</span><span data-lang="en">Low risk</span></div><div class="quiz-opt" data-idx="2"><span data-lang="zh">中風險</span><span data-lang="en">Medium risk</span></div><div class="quiz-opt" data-idx="3"><span data-lang="zh">High-risk</span><span data-lang="en">High-risk</span></div>
+</div><div class="quiz-feedback"></div></div>
+<div class="quiz-q" data-answer="2" data-exp-zh="dbGaP / EGA 為受控存取資料庫，需 DAC 申請與 institutional DUA。" data-exp-en="dbGaP / EGA are controlled-access repositories — require DAC application and institutional DUA.">
+<p data-lang="zh">3. 含個人 identifiable 基因資料的受控存取資料庫？</p>
+<p data-lang="en">3. Controlled-access repository for personally identifiable genomic data?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">GEO</div><div class="quiz-opt" data-idx="1">ENA</div><div class="quiz-opt" data-idx="2">dbGaP / EGA</div><div class="quiz-opt" data-idx="3">Reactome</div>
+</div><div class="quiz-feedback"></div></div>
+</section>
+
+<nav class="page-nav">
+<a href="19-foundation-models.html"><span class="nav-dir" data-zh="← 上一章" data-en="← Prev">← 上一章</span><span class="nav-title" data-zh="Ch 19 · 生物基礎模型 (Foundation Models)" data-en="Ch 19 · Bio Foundation Models">Ch 19 · 生物基礎模型 (Foundation Models)</span></a>
+<a href="index.html"><span class="nav-dir" data-zh="完成 →" data-en="Done →">完成 →</span><span class="nav-title" data-zh="回到首頁" data-en="Back to Hub">回到首頁</span></a>
+</nav>
+</main>
+
+<footer class="site-footer">© Charlene — HTBA Interactive Tutorial · 20 chapters · bilingual</footer>
+<script src="i18n.js"></script>
+<script>
+window.addEventListener('scroll',()=>{const h=document.documentElement;document.getElementById('progressBar').style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100+'%';});
+function switchTab(b,id){const p=b.closest('.code-tabs');p.querySelectorAll('.code-tab-btn').forEach(x=>x.classList.remove('active'));p.querySelectorAll('.code-tab-content').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById(id).classList.add('active');}
+document.querySelectorAll('.quiz-q').forEach(q=>{const ans=+q.dataset.answer;q.querySelectorAll('.quiz-opt').forEach(o=>{o.onclick=()=>{if(q.dataset.done)return;q.dataset.done=1;const i=+o.dataset.idx,fb=q.querySelector('.quiz-feedback');q.querySelectorAll('.quiz-opt').forEach(x=>{if(+x.dataset.idx===ans)x.classList.add('correct');else if(+x.dataset.idx===i)x.classList.add('wrong');});if(i===ans){fb.className='quiz-feedback show correct-fb';fb.textContent='✓ '+(window.I18n&&window.I18n.get()==='en'?q.dataset.expEn:q.dataset.expZh);}else{fb.className='quiz-feedback show wrong-fb';fb.textContent='✗ '+(window.I18n&&window.I18n.get()==='en'?q.dataset.expEn:q.dataset.expZh);}};});});
+// repro checklist
+const REP=[{zh:'Code 已 push 到 git repo（GitHub/GitLab）',en:'Code pushed to git (GitHub/GitLab)'},{zh:'README 含安裝、執行、re-run 步驟',en:'README has install, run, re-run steps'},{zh:'依賴用 conda env / renv / pixi lock 鎖版本',en:'Dependencies locked via conda / renv / pixi'},{zh:'用 Docker / Singularity container 包裝',en:'Wrapped in Docker / Singularity container'},{zh:'資料有 DOI 與 metadata（GEO / Zenodo / FAIR）',en:'Data has DOI + metadata (GEO / Zenodo / FAIR)'},{zh:'管線用 Snakemake / Nextflow / WDL 撰寫',en:'Pipeline written in Snakemake / Nextflow / WDL'},{zh:'隨機種子 (set.seed) 全部固定',en:'Random seeds fixed'},{zh:'分析筆記用 Quarto / R Markdown / Jupyter',en:'Analysis notebook in Quarto / R Markdown / Jupyter'},{zh:'IRB / consent 文件已歸檔',en:'IRB / consent docs archived'},{zh:'CONSORT-AI / SPIRIT-AI / FAIR 報告檢查表通過',en:'CONSORT-AI / SPIRIT-AI / FAIR checklist passed'}];
+const w=document.getElementById('repBoxes');
+REP.forEach(e=>{const l=document.createElement('label');l.style.cssText='display:flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid var(--c-border-light);border-radius:6px;cursor:pointer;font-size:.83rem;background:var(--c-surface)';const cb=document.createElement('input');cb.type='checkbox';cb.onchange=upd;const s1=document.createElement('span');s1.dataset.lang='zh';s1.textContent=e.zh;const s2=document.createElement('span');s2.dataset.lang='en';s2.textContent=e.en;s2.style.display='none';l.append(cb,s1,s2);w.append(l);});
+function upd(){const n=document.querySelectorAll('#repBoxes input:checked').length;document.getElementById('repScore').textContent='Score: '+n+' / 10';let cl='warn',st='Incomplete';if(n>=8){cl='pass';st='Reproducible ✓';}else if(n<=3){cl='fail';st='Critical gaps';}document.getElementById('repCl').textContent='Status: '+st;document.getElementById('repCl').className='sim-stat '+cl;}
+document.addEventListener('langchange',e=>{const l=e.detail.lang;document.querySelectorAll('#repBoxes [data-lang]').forEach(s=>s.style.display=s.dataset.lang===l?'':'none');});upd();
+</script>
+</body></html>

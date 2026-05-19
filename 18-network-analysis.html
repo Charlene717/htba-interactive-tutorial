@@ -1,0 +1,183 @@
+<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Ch 18: 網絡分析與圖學習 — HTBA</title>
+<link rel="stylesheet" href="styles.css">
+</head><body>
+<nav class="top-nav"><div class="top-nav-inner">
+  <a href="index.html" class="top-nav-brand"><span>🧬</span> <span data-zh="高通量分析與整合" data-en="HTBA Tutorial">高通量分析與整合</span></a>
+  <ul class="top-nav-links"><li><a href="01-overview.html">01</a></li><li><a href="02-experimental-design.html">02</a></li><li><a href="03-upstream-pipeline.html">03</a></li><li><a href="04-genomics-variants.html">04</a></li><li><a href="05-structural-variants.html">05</a></li><li><a href="06-atac-cutrun.html">06</a></li><li><a href="07-dna-methylation.html">07</a></li><li><a href="08-bulk-rnaseq.html">08</a></li><li><a href="09-scrnaseq.html">09</a></li><li><a href="10-spatial-omics.html">10</a></li><li><a href="11-long-read-rna.html">11</a></li><li><a href="12-proteomics.html">12</a></li><li><a href="13-metabolomics.html">13</a></li><li><a href="14-batch-correction.html">14</a></li><li><a href="15-multiomics-integration.html">15</a></li><li><a href="16-spatial-singlecell.html">16</a></li><li><a href="17-functional-enrichment.html">17</a></li><li><a href="18-network-analysis.html" class="active">18</a></li><li><a href="19-foundation-models.html">19</a></li><li><a href="20-reproducibility.html">20</a></li>
+    <li><a href="references/index.html" data-zh="📚 參考資料" data-en="📚 References">📚 參考資料</a></li>
+  </ul>
+</div></nav>
+<div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
+
+<header class="page-hero"><div class="step-badge">CH 18 / 20 · BLOCK 5 INTEGRATION</div>
+<h1 data-zh="網絡分析與圖學習" data-en="Network Analysis & Graph Learning">網絡分析與圖學習</h1>
+<p class="subtitle" data-lang="zh">WGCNA、STRING、Cytoscape、SCENIC、graph neural networks — 從共表達到 GNN 預測。</p>
+<p class="subtitle" data-lang="en">WGCNA, STRING, Cytoscape, SCENIC, graph neural networks — from co-expression to GNN prediction.</p>
+</header>
+
+<main class="content-wrap">
+
+<section class="section">
+<div class="section-label" data-zh="網絡類型" data-en="NETWORK TYPES">網絡類型</h2>
+<h2 data-zh="一、生物網絡的四大型態" data-en="I. Four Types of Biological Networks">一、四大網絡</h2>
+<div class="card-grid cols-2">
+<div class="card"><h4>🧬 <span data-zh="共表達網絡" data-en="Co-expression network">共表達</span></h4>
+<div data-lang="zh"><p>節點=基因；邊=表達相關。<strong>WGCNA</strong>（Langfelder 2008）是經典；現代替代：<strong>hdWGCNA</strong>（single-cell）、<strong>CEMiTool</strong>、<strong>fastBMA</strong>。輸出 module + hub genes。</p></div>
+<div data-lang="en"><p>Nodes = genes; edges = expression correlation. <strong>WGCNA</strong> (Langfelder 2008) is classic; modern: <strong>hdWGCNA</strong> (single-cell), <strong>CEMiTool</strong>, <strong>fastBMA</strong>. Output: modules + hub genes.</p></div>
+</div>
+<div class="card"><h4>🤝 <span data-zh="PPI / interaction" data-en="PPI / interaction">PPI 蛋白互動</span></h4>
+<div data-lang="zh"><p>節點=蛋白；邊=已知 / 預測互作。資料庫：<strong>STRING</strong>、<strong>BioGRID</strong>、<strong>IntAct</strong>、<strong>HuRI</strong>。分析：propagation、module detection (Louvain)、visualization (Cytoscape)。</p></div>
+<div data-lang="en"><p>Nodes = proteins; edges = known/predicted interactions. DBs: <strong>STRING</strong>, <strong>BioGRID</strong>, <strong>IntAct</strong>, <strong>HuRI</strong>. Analysis: propagation, module detection (Louvain), visualization (Cytoscape).</p></div>
+</div>
+<div class="card"><h4>🎛️ <span data-zh="基因調控網絡 (GRN)" data-en="Gene regulatory network (GRN)">調控網絡</span></h4>
+<div data-lang="zh"><p>節點=基因 / TF；邊=調控關係。<strong>SCENIC / SCENIC+</strong>（scRNA + ATAC + motif）、<strong>GENIE3</strong>、<strong>CellOracle</strong>（含 KO 模擬）、<strong>Pando</strong>。</p></div>
+<div data-lang="en"><p>Nodes = genes/TFs; edges = regulation. <strong>SCENIC / SCENIC+</strong> (scRNA + ATAC + motif), <strong>GENIE3</strong>, <strong>CellOracle</strong> (with KO simulation), <strong>Pando</strong>.</p></div>
+</div>
+<div class="card"><h4>🌐 <span data-zh="知識圖譜 (KG)" data-en="Knowledge graph (KG)">知識圖譜</span></h4>
+<div data-lang="zh"><p>異質節點（基因 / 化合物 / 疾病 / 表型）+ 關係邊。<strong>OpenTargets Platform</strong>、<strong>Hetionet</strong>、<strong>PrimeKG</strong>、<strong>BioBricks</strong>；用 graph embedding (TransE, GAT) 做 drug repurposing。</p></div>
+<div data-lang="en"><p>Heterogeneous nodes (genes / compounds / diseases / phenotypes) + relation edges. <strong>OpenTargets</strong>, <strong>Hetionet</strong>, <strong>PrimeKG</strong>, <strong>BioBricks</strong>; graph embeddings (TransE, GAT) for drug repurposing.</p></div>
+</div>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="GNN" data-en="GNN">GNN</h2>
+<h2 data-zh="二、Graph Neural Networks 在 omics 的應用" data-en="II. Graph Neural Networks in Omics">二、GNN 應用</h2>
+<table class="comp-table">
+<thead><tr><th>Method</th><th data-zh="任務" data-en="Task">任務</th><th data-zh="圖類型" data-en="Graph">圖</th></tr></thead>
+<tbody>
+<tr><td><strong>MOGONET</strong></td><td data-zh="多 omics 疾病分類" data-en="Multi-omics disease classification">多 omics 分類</td><td>GCN + view correlation</td></tr>
+<tr><td><strong>GLUE (scglue)</strong></td><td data-zh="跨 omics 對齊" data-en="Cross-omics alignment">跨 omics 對齊</td><td>regulatory prior</td></tr>
+<tr><td><strong>scGNN 2.0</strong></td><td data-zh="scRNA imputation + cluster" data-en="scRNA imputation + clustering">imputation</td><td>cell-cell similarity</td></tr>
+<tr><td><strong>DeepWalk / node2vec</strong></td><td data-zh="圖 embedding" data-en="Graph embedding">嵌入</td><td>any</td></tr>
+<tr><td><strong>GraphSAGE / GAT</strong></td><td data-zh="節點分類 / 連結預測" data-en="Node classification / link prediction">分類 / 連結</td><td>any</td></tr>
+<tr><td><strong>SpaGCN / STAGATE / GraphST</strong></td><td data-zh="空間 domain 偵測" data-en="Spatial domain detection">spatial</td><td>spatial KNN</td></tr>
+<tr><td><strong>DREAMER / DeepDDS</strong></td><td data-zh="藥物協同 / drug-target" data-en="Drug synergy / drug-target">drug repurposing</td><td>knowledge graph</td></tr>
+</tbody></table>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="互動：WGCNA module" data-en="INTERACTIVE">互動</h2>
+<h2 data-zh="三、WGCNA scale-free 拓樸模擬" data-en="III. WGCNA Scale-free Topology Sim">三、scale-free 拓樸</h2>
+<div data-lang="zh"><p>WGCNA 透過 soft-thresholding power 把相關矩陣轉成「scale-free」（少數 hub + 多數低度節點）。R² &gt; 0.8 通常為 reasonable power。</p></div>
+<div data-lang="en"><p>WGCNA uses a soft-thresholding power to turn correlation into "scale-free" topology (few hubs + many low-degree nodes). R² &gt; 0.8 typically marks a reasonable power.</p></div>
+<div class="interactive-panel">
+<div class="sim-stats"><span class="sim-stat pass" id="wR">R²: —</span><span class="sim-stat warn" id="wM">Mean k: —</span></div>
+<div class="slider-group"><label><span>Power (β)</span><span id="wPv">6</span></label><input type="range" id="wP" min="1" max="20" value="6" step="1"></div>
+<canvas id="wCv" style="background:var(--c-surface-alt);border-radius:8px;width:100%;height:220px"></canvas>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="程式碼" data-en="CODE">程式碼</div>
+<h2 data-zh="四、WGCNA + STRING + SCENIC" data-en="IV. WGCNA + STRING + SCENIC">四、實作</h2>
+<div class="code-tabs"><div class="code-tab-btns"><button class="code-tab-btn active" onclick="switchTab(this,'r1')">R / WGCNA</button><button class="code-tab-btn" onclick="switchTab(this,'r2')">R / STRINGdb</button><button class="code-tab-btn" onclick="switchTab(this,'py1')">Python / pySCENIC + GNN</button></div>
+<div class="code-tab-content active" id="r1"><pre><span class="comment"># WGCNA — 共表達 module</span>
+<span class="func">library</span>(WGCNA); options(stringsAsFactors=<span class="kw">FALSE</span>)
+<span class="func">enableWGCNAThreads</span>()
+
+datExpr &lt;- <span class="func">t</span>(<span class="func">log2</span>(counts+<span class="num">1</span>))      <span class="comment"># sample × gene</span>
+sft &lt;- <span class="func">pickSoftThreshold</span>(datExpr, powerVector = <span class="num">1</span>:<span class="num">20</span>)
+<span class="func">plot</span>(sft$fitIndices$Power, -<span class="func">sign</span>(sft$fitIndices$slope)*sft$fitIndices$SFT.R.sq)
+
+net &lt;- <span class="func">blockwiseModules</span>(datExpr, power = <span class="num">6</span>,
+              TOMType = <span class="str">"signed"</span>, minModuleSize = <span class="num">30</span>,
+              mergeCutHeight = <span class="num">0.25</span>, numericLabels = <span class="kw">TRUE</span>)
+
+<span class="comment"># Module trait correlation</span>
+ME &lt;- net$MEs
+mod_trait &lt;- <span class="func">cor</span>(ME, pheno_traits, use=<span class="str">"p"</span>)
+<span class="func">labeledHeatmap</span>(mod_trait, xLabels=<span class="func">colnames</span>(pheno_traits),
+                yLabels=<span class="func">colnames</span>(ME))</pre></div>
+<div class="code-tab-content" id="r2"><pre><span class="comment"># STRINGdb — PPI 與 module enrichment</span>
+<span class="func">library</span>(STRINGdb)
+sdb &lt;- <span class="func">STRINGdb$new</span>(version=<span class="str">"12.0"</span>, species=<span class="num">9606</span>,
+                       score_threshold=<span class="num">700</span>, input_directory=<span class="str">""</span>)
+mapped &lt;- sdb$<span class="func">map</span>(sig_genes, <span class="str">"gene"</span>, removeUnmappedRows=<span class="kw">TRUE</span>)
+sdb$<span class="func">plot_network</span>(mapped$STRING_id)
+
+enrich &lt;- sdb$<span class="func">get_enrichment</span>(mapped$STRING_id, category=<span class="str">"KEGG"</span>)
+<span class="func">head</span>(enrich)</pre></div>
+<div class="code-tab-content" id="py1"><pre><span class="comment"># pySCENIC — TF regulon discovery（scRNA）</span>
+<span class="func">pyscenic</span> grn expr.tsv tfs.txt -o adjacencies.tsv --num_workers <span class="num">16</span>
+<span class="func">pyscenic</span> ctx adjacencies.tsv \
+         hg38_motif_cb.feather --annotations_fname motifs.tbl \
+         --expression_mtx_fname expr.tsv -o regulons.csv --num_workers <span class="num">16</span>
+<span class="func">pyscenic</span> aucell expr.tsv regulons.csv -o aucell.csv
+
+<span class="comment"># GNN (PyG): node2vec on STRING graph</span>
+<span class="kw">import</span> torch
+<span class="kw">from</span> torch_geometric.datasets <span class="kw">import</span> AttributedGraphDataset
+<span class="kw">from</span> torch_geometric.nn <span class="kw">import</span> Node2Vec
+model = <span class="func">Node2Vec</span>(edge_index, embedding_dim=<span class="num">128</span>, walk_length=<span class="num">20</span>,
+                 context_size=<span class="num">10</span>).<span class="func">to</span>(<span class="str">"cuda"</span>)
+opt = torch.optim.<span class="func">SparseAdam</span>(model.<span class="func">parameters</span>(), lr=<span class="num">0.01</span>)
+<span class="kw">for</span> epoch <span class="kw">in</span> <span class="func">range</span>(<span class="num">50</span>):
+    loss = model.<span class="func">loss</span>(model.<span class="func">sample</span>(...)); loss.<span class="func">backward</span>(); opt.<span class="func">step</span>()</pre></div>
+</div>
+</section>
+
+<section class="quiz-section">
+<h3>📝 <span data-zh="自我檢測" data-en="Self-Check">自我檢測</span></h3>
+<div class="quiz-q" data-answer="0" data-exp-zh="WGCNA 是經典共表達網絡分析方法，輸出 module + hub genes，並可關聯到 trait。" data-exp-en="WGCNA is the classic co-expression network method — outputs modules + hub genes, correlatable to traits.">
+<p data-lang="zh">1. 共表達 module 與 hub gene 偵測的經典方法？</p>
+<p data-lang="en">1. Classic method for co-expression modules + hub genes?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">WGCNA</div><div class="quiz-opt" data-idx="1">DESeq2</div><div class="quiz-opt" data-idx="2">VEP</div><div class="quiz-opt" data-idx="3">Bismark</div>
+</div><div class="quiz-feedback"></div></div>
+<div class="quiz-q" data-answer="2" data-exp-zh="SCENIC / SCENIC+ 結合 expression + motif（+ ATAC）偵測 TF regulon 與 GRN。" data-exp-en="SCENIC / SCENIC+ combines expression + motif (+ ATAC) for TF regulons and GRNs.">
+<p data-lang="zh">2. 單細胞 TF regulon 與 GRN 偵測常用工具？</p>
+<p data-lang="en">2. Single-cell TF regulon and GRN tool?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">GATK</div><div class="quiz-opt" data-idx="1">Bowtie2</div><div class="quiz-opt" data-idx="2">SCENIC / SCENIC+</div><div class="quiz-opt" data-idx="3">CNVkit</div>
+</div><div class="quiz-feedback"></div></div>
+<div class="quiz-q" data-answer="3" data-exp-zh="STRING 是 PPI 資料庫；其餘為 RNA-seq、變異、單細胞工具。" data-exp-en="STRING is a PPI database; the others are RNA-seq, variant, and single-cell tools.">
+<p data-lang="zh">3. 想查蛋白質互作網絡，最常用的資料庫？</p>
+<p data-lang="en">3. Most common protein-interaction database?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">GEO</div><div class="quiz-opt" data-idx="1">gnomAD</div><div class="quiz-opt" data-idx="2">Scanpy</div><div class="quiz-opt" data-idx="3">STRING</div>
+</div><div class="quiz-feedback"></div></div>
+</section>
+
+<nav class="page-nav">
+<a href="17-functional-enrichment.html"><span class="nav-dir" data-zh="← 上一章" data-en="← Prev">← 上一章</span><span class="nav-title" data-zh="Ch 17 · 功能富集與通路分析" data-en="Ch 17 · Functional Enrichment &amp; Pathway Analysis">Ch 17 · 功能富集與通路分析</span></a>
+<a href="19-foundation-models.html"><span class="nav-dir" data-zh="下一章 →" data-en="Next →">下一章 →</span><span class="nav-title" data-zh="Ch 19 · 生物基礎模型 (Foundation Models)" data-en="Ch 19 · Bio Foundation Models">Ch 19 · 生物基礎模型 (Foundation Models)</span></a>
+</nav>
+</main>
+
+<footer class="site-footer">© Charlene — HTBA Interactive Tutorial</footer>
+<script src="i18n.js"></script>
+<script>
+window.addEventListener('scroll',()=>{const h=document.documentElement;document.getElementById('progressBar').style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100+'%';});
+function switchTab(b,id){const p=b.closest('.code-tabs');p.querySelectorAll('.code-tab-btn').forEach(x=>x.classList.remove('active'));p.querySelectorAll('.code-tab-content').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById(id).classList.add('active');}
+document.querySelectorAll('.quiz-q').forEach(q=>{const ans=+q.dataset.answer;q.querySelectorAll('.quiz-opt').forEach(o=>{o.onclick=()=>{if(q.dataset.done)return;q.dataset.done=1;const i=+o.dataset.idx,fb=q.querySelector('.quiz-feedback');q.querySelectorAll('.quiz-opt').forEach(x=>{if(+x.dataset.idx===ans)x.classList.add('correct');else if(+x.dataset.idx===i)x.classList.add('wrong');});if(i===ans){fb.className='quiz-feedback show correct-fb';fb.textContent='✓ '+(window.I18n&&window.I18n.get()==='en'?q.dataset.expEn:q.dataset.expZh);}else{fb.className='quiz-feedback show wrong-fb';fb.textContent='✗ '+(window.I18n&&window.I18n.get()==='en'?q.dataset.expEn:q.dataset.expZh);}};});});
+// WGCNA scale-free sim
+const cv=document.getElementById('wCv'),ctx=cv.getContext('2d');
+function draw(){
+  const p=+document.getElementById('wP').value;
+  document.getElementById('wPv').textContent=p;
+  const w=cv.width=cv.offsetWidth,h=cv.height=cv.offsetHeight;
+  ctx.fillStyle='#eef5f7';ctx.fillRect(0,0,w,h);
+  // simulate degree distribution: power p increases scale-freeness up to ~7, then over-saturates
+  const r2 = p<=2?0.3+p*0.1: p<=7?0.5+(p-2)*0.085: Math.max(0.4,0.92-(p-7)*0.04);
+  const meanK = Math.max(2,40*Math.exp(-p/4));
+  // draw log-log curve
+  const N=20;
+  ctx.strokeStyle='#0e7490';ctx.lineWidth=2;ctx.beginPath();
+  for(let i=1;i<=N;i++){
+    const k=i;
+    const Pk=Math.pow(k,-r2*3);
+    const x=Math.log(k)/Math.log(N)*(w-50)+30;
+    const y=h-25-Math.log(Pk+1e-6)*-15;
+    if(i===1)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+  ctx.fillStyle='#0f172a';ctx.font='10px sans-serif';ctx.fillText('log(k)',w/2-15,h-3);ctx.fillText('log(P(k))',2,12);
+  document.getElementById('wR').textContent='R²: '+r2.toFixed(2);
+  document.getElementById('wM').textContent='Mean k: '+meanK.toFixed(1);
+  document.getElementById('wR').className='sim-stat '+(r2>=0.8?'pass':'warn');
+}
+document.getElementById('wP').oninput=draw;window.addEventListener('resize',draw);setTimeout(draw,50);
+</script>
+</body></html>

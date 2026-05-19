@@ -1,0 +1,220 @@
+<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Ch 4: 變異偵測與註釋 — HTBA</title>
+<link rel="stylesheet" href="styles.css">
+</head><body>
+<nav class="top-nav"><div class="top-nav-inner">
+  <a href="index.html" class="top-nav-brand"><span>🧬</span> <span data-zh="高通量分析與整合" data-en="HTBA Tutorial">高通量分析與整合</span></a>
+  <ul class="top-nav-links">
+    <li><a href="01-overview.html">01</a></li><li><a href="02-experimental-design.html">02</a></li><li><a href="03-upstream-pipeline.html">03</a></li><li><a href="04-genomics-variants.html" class="active">04</a></li><li><a href="05-structural-variants.html">05</a></li><li><a href="06-atac-cutrun.html">06</a></li><li><a href="07-dna-methylation.html">07</a></li><li><a href="08-bulk-rnaseq.html">08</a></li><li><a href="09-scrnaseq.html">09</a></li><li><a href="10-spatial-omics.html">10</a></li><li><a href="11-long-read-rna.html">11</a></li><li><a href="12-proteomics.html">12</a></li><li><a href="13-metabolomics.html">13</a></li><li><a href="14-batch-correction.html">14</a></li><li><a href="15-multiomics-integration.html">15</a></li><li><a href="16-spatial-singlecell.html">16</a></li><li><a href="17-functional-enrichment.html">17</a></li><li><a href="18-network-analysis.html">18</a></li><li><a href="19-foundation-models.html">19</a></li><li><a href="20-reproducibility.html">20</a></li>
+    <li><a href="references/index.html" data-zh="📚 參考資料" data-en="📚 References">📚 參考資料</a></li>
+  </ul>
+</div></nav>
+<div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
+
+<header class="page-hero"><div class="step-badge">CH 4 / 20 · BLOCK 2 GENOMICS</div>
+<h1 data-zh="變異偵測與註釋 (SNV / Indel)" data-en="Variant Calling & Annotation (SNV / Indel)">變異偵測與註釋</h1>
+<p class="subtitle" data-lang="zh">從 BAM 到 VCF：GATK best practices、DeepVariant、VEP、ClinVar 致病性註釋 — germline 與 somatic 一次涵蓋。</p>
+<p class="subtitle" data-lang="en">From BAM to VCF: GATK best practices, DeepVariant, VEP, ClinVar pathogenicity — covering both germline and somatic.</p>
+</header>
+
+<main class="content-wrap">
+
+<section class="section">
+<div class="section-label" data-zh="總覽" data-en="OVERVIEW">總覽</div>
+<h2 data-zh="一、變異呼叫的兩條主線" data-en="I. The Two Main Variant-Calling Tracks">一、變異呼叫的兩條主線</h2>
+<div class="card-grid cols-2">
+<div class="card"><h4>🧬 <span data-zh="Germline（生殖系）" data-en="Germline">Germline</span></h4>
+<div data-lang="zh"><p>來自卵 / 精子，全身細胞共有，符合 Mendelian 機率。<strong>主要工具：</strong>GATK HaplotypeCaller、DeepVariant（Google）。常做 joint genotyping（GVCF + GenotypeGVCFs）。下游：罕見病、carrier screen、GWAS。</p></div>
+<div data-lang="en"><p>From egg/sperm, shared by all cells, follows Mendelian frequencies. <strong>Tools:</strong> GATK HaplotypeCaller, DeepVariant (Google). Joint genotyping (GVCF + GenotypeGVCFs). Downstream: rare disease, carrier screen, GWAS.</p></div>
+</div>
+<div class="card"><h4>🎯 <span data-zh="Somatic（體細胞）" data-en="Somatic">Somatic</span></h4>
+<div data-lang="zh"><p>後天突變，腫瘤組織與正常組織配對比較。<strong>主要工具：</strong>GATK Mutect2、Strelka2、VarScan2、Lancet（複雜區域）。VAF 可低至 1% 需高深度（&gt;100×）。下游：driver mutation、TMB、neoantigen。</p></div>
+<div data-lang="en"><p>Acquired mutations, tumor-vs-normal paired. <strong>Tools:</strong> GATK Mutect2, Strelka2, VarScan2, Lancet (complex regions). VAF as low as 1% — needs high depth (&gt;100×). Downstream: drivers, TMB, neoantigens.</p></div>
+</div>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="GATK 流程" data-en="GATK WORKFLOW">GATK 流程</div>
+<h2 data-zh="二、GATK Best Practices 流程" data-en="II. GATK Best Practices Workflow">二、GATK Best Practices 流程</h2>
+<div class="workflow">
+<div class="workflow-step" data-step="1"><h4>BWA-MEM2 alignment</h4><p data-lang="zh">用 read group (-R "@RG\tID:...\tSM:...\tPL:ILLUMINA") 標註樣本，後續 BQSR 與 joint genotyping 才能跑。</p><p data-lang="en">Tag with read group (-R "@RG\tID:...\tSM:...\tPL:ILLUMINA") — required for BQSR and joint genotyping.</p></div>
+<div class="workflow-step" data-step="2"><h4>MarkDuplicates</h4><p data-lang="zh">Picard / GATK MarkDuplicates — 移除 PCR 重複。UMI-based library 改用 fgbio CallDuplexConsensusReads。</p><p data-lang="en">Picard / GATK MarkDuplicates — remove PCR duplicates. For UMI libraries use fgbio CallDuplexConsensusReads.</p></div>
+<div class="workflow-step" data-step="3"><h4>BQSR (Base Quality Score Recalibration)</h4><p data-lang="zh">用 dbSNP / Mills indels 做機器學習，校正系統性 Q 值偏差。長讀資料不需要。</p><p data-lang="en">Machine-learning recalibration using dbSNP / Mills indels — corrects systematic Q-score bias. Skip for long reads.</p></div>
+<div class="workflow-step" data-step="4"><h4>HaplotypeCaller → GVCF</h4><p data-lang="zh">每個樣本獨立呼叫，輸出 GVCF（含 reference block）。為 cohort joint genotyping 做準備。</p><p data-lang="en">Per-sample calling outputs GVCF (with reference blocks). Sets up cohort joint genotyping.</p></div>
+<div class="workflow-step" data-step="5"><h4>GenotypeGVCFs + VQSR</h4><p data-lang="zh">Joint 處理整個 cohort，再用 VQSR（Gaussian mixture model）過濾低品質 variant；小 cohort 改用 hard filter。</p><p data-lang="en">Joint over whole cohort, then VQSR (Gaussian mixture) filters low-quality variants; for small cohorts use hard filters.</p></div>
+</div>
+<div class="callout warn"><span class="callout-icon">⚠️</span><div>
+<span data-lang="zh"><strong>DeepVariant 替代：</strong>Google 的 CNN-based 呼叫器（PrecisionFDA 多次奪冠），不需 BQSR、不需 VQSR，但對於 cohort joint analysis 仍需 GLnexus 後處理。長讀（HiFi、ONT）有專屬模型。</span>
+<span data-lang="en"><strong>DeepVariant alternative:</strong> Google's CNN caller (multiple PrecisionFDA wins) skips BQSR / VQSR, but cohort joint analysis still needs GLnexus. Long-read models exist for HiFi and ONT.</span>
+</div></div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="變異註釋" data-en="ANNOTATION">變異註釋</div>
+<h2 data-zh="三、從 VCF 到「臨床可讀」的註釋" data-en="III. From VCF to Clinically Interpretable">三、變異註釋</h2>
+<div class="card-grid cols-3">
+<div class="card"><h4>📄 <span data-zh="功能影響" data-en="Functional impact">功能影響</span></h4>
+<div data-lang="zh"><p><strong>VEP</strong>（Ensembl）、<strong>ANNOVAR</strong>、<strong>snpEff</strong>：把 chr-pos-ref-alt 翻成 missense / synonymous / stop_gained 等 SO 詞彙，並對應基因 / transcript / protein 改變。</p></div>
+<div data-lang="en"><p><strong>VEP</strong> (Ensembl), <strong>ANNOVAR</strong>, <strong>snpEff</strong>: translate chr-pos-ref-alt into SO terms (missense / synonymous / stop_gained) plus gene/transcript/protein consequences.</p></div>
+</div>
+<div class="card"><h4>📊 <span data-zh="族群頻率" data-en="Population frequency">族群頻率</span></h4>
+<div data-lang="zh"><p><strong>gnomAD v4</strong>（807k exomes + 76k genomes）：取得 AF、AC、AN，並提供 popmax；rare variant 通常定義 AF &lt; 0.1% 或 &lt; 1%。</p></div>
+<div data-lang="en"><p><strong>gnomAD v4</strong> (807k exomes + 76k genomes): AF, AC, AN, popmax. Rare variants typically defined as AF &lt; 0.1% or &lt; 1%.</p></div>
+</div>
+<div class="card"><h4>🩺 <span data-zh="臨床顯著性" data-en="Clinical significance">臨床顯著性</span></h4>
+<div data-lang="zh"><p><strong>ClinVar</strong>：人工策展，5 級分類（B / LB / VUS / LP / P）。<strong>InterVar</strong>、<strong>Franklin</strong>：依 ACMG/AMP 2015 準則自動化評分。</p></div>
+<div data-lang="en"><p><strong>ClinVar</strong>: human-curated 5-tier (B / LB / VUS / LP / P). <strong>InterVar</strong>, <strong>Franklin</strong>: automate ACMG/AMP 2015 criteria.</p></div>
+</div>
+<div class="card"><h4>🤖 <span data-zh="預測工具" data-en="In silico predictors">In silico 預測</span></h4>
+<div data-lang="zh"><p><strong>AlphaMissense</strong> (DeepMind 2023)、<strong>REVEL</strong>、<strong>CADD</strong>、<strong>SpliceAI</strong>。新版 ACMG 建議用 calibrated probabilities，而非單一 cutoff。</p></div>
+<div data-lang="en"><p><strong>AlphaMissense</strong> (DeepMind 2023), <strong>REVEL</strong>, <strong>CADD</strong>, <strong>SpliceAI</strong>. Newer ACMG guidance prefers calibrated probabilities over a single cutoff.</p></div>
+</div>
+<div class="card"><h4>💊 <span data-zh="藥物基因組" data-en="Pharmacogenomics">藥物基因組</span></h4>
+<div data-lang="zh"><p><strong>PharmGKB / CPIC</strong>：CYP2D6、CYP2C19、TPMT 等代謝酶基因型 → 處方建議。<strong>Stargazer / PharmCAT</strong> 自動分型。</p></div>
+<div data-lang="en"><p><strong>PharmGKB / CPIC</strong>: CYP2D6, CYP2C19, TPMT genotype → prescribing guidance. <strong>Stargazer / PharmCAT</strong> for automated star-allele typing.</p></div>
+</div>
+<div class="card"><h4>🧠 <span data-zh="GWAS 後續" data-en="Post-GWAS">GWAS 後續</span></h4>
+<div data-lang="zh"><p>用 <strong>FUMA</strong>、<strong>LocusZoom</strong>、<strong>OpenTargets Genetics</strong> 解讀 hit 的功能與基因；Fine-mapping 用 <strong>SuSiE</strong> / <strong>CAVIAR</strong>。</p></div>
+<div data-lang="en"><p>Use <strong>FUMA</strong>, <strong>LocusZoom</strong>, <strong>OpenTargets Genetics</strong> to interpret hits; fine-mapping via <strong>SuSiE</strong> / <strong>CAVIAR</strong>.</p></div>
+</div>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="互動：ACMG 分類" data-en="INTERACTIVE: ACMG">互動 — ACMG 分類</h2>
+<h2 data-zh="四、ACMG/AMP 2015 變異分類模擬器" data-en="IV. ACMG/AMP 2015 Variant Classifier Sim">四、ACMG 分類模擬器</h2>
+<div data-lang="zh"><p>勾選證據，依 Richards et al. 2015 規則計算最終分類。<strong>注意：</strong>僅為教學示意，臨床請用 InterVar / Franklin 並由 board-certified geneticist 審核。</p></div>
+<div data-lang="en"><p>Check evidence, see final classification per Richards et al. 2015. <strong>Note:</strong> teaching only — clinical use requires InterVar / Franklin reviewed by board-certified geneticists.</p></div>
+<div class="interactive-panel">
+<div id="acmgBoxes" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;margin-bottom:14px"></div>
+<div class="sim-stats" style="margin-top:10px">
+<span class="sim-stat" id="acmgScore">Score: P=0, B=0</span>
+<span class="sim-stat pass" id="acmgClass">VUS</span>
+</div>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="程式碼" data-en="CODE">程式碼</div>
+<h2 data-zh="五、GATK + DeepVariant + VEP 實作" data-en="V. GATK + DeepVariant + VEP Code">五、實作</h2>
+<div class="code-tabs"><div class="code-tab-btns"><button class="code-tab-btn active" onclick="switchTab(this,'sh1')">Shell / GATK</button><button class="code-tab-btn" onclick="switchTab(this,'dv1')">DeepVariant Docker</button><button class="code-tab-btn" onclick="switchTab(this,'r1')">R / VariantAnnotation</button></div>
+<div class="code-tab-content active" id="sh1"><pre><span class="comment"># Germline single-sample → joint cohort</span>
+<span class="func">gatk</span> HaplotypeCaller \
+    -R Homo_sapiens.GRCh38.fa \
+    -I sample.dedup.bqsr.bam \
+    -O sample.g.vcf.gz \
+    -ERC GVCF
+
+<span class="func">gatk</span> CombineGVCFs -R ref.fa \
+    -V s1.g.vcf.gz -V s2.g.vcf.gz -V s3.g.vcf.gz \
+    -O cohort.g.vcf.gz
+<span class="func">gatk</span> GenotypeGVCFs -R ref.fa -V cohort.g.vcf.gz -O cohort.vcf.gz
+
+<span class="comment"># VQSR（SNP）</span>
+<span class="func">gatk</span> VariantRecalibrator -V cohort.vcf.gz \
+    --resource:hapmap,known=false,training=true,truth=true,prior=15 hapmap.vcf \
+    --resource:omni,known=false,training=true,truth=true,prior=12 omni.vcf \
+    -an QD -an MQ -an FS -an SOR -mode SNP \
+    -O snp.recal --tranches-file snp.tranches</pre></div>
+<div class="code-tab-content" id="dv1"><pre><span class="comment"># DeepVariant 一鍵呼叫（Docker）</span>
+BIN_VERSION=<span class="str">"1.6.1"</span>
+<span class="func">docker</span> run --gpus all \
+  -v <span class="str">"$PWD"</span>:/input -v <span class="str">"$PWD"</span>:/output \
+  google/deepvariant:${BIN_VERSION}-gpu \
+  /opt/deepvariant/bin/run_deepvariant \
+    --model_type=WGS \
+    --ref=/input/ref.fa \
+    --reads=/input/sample.bam \
+    --output_vcf=/output/sample.vcf.gz \
+    --num_shards=<span class="num">16</span>
+
+<span class="comment"># 長讀（PacBio HiFi）</span>
+<span class="comment">--model_type=PACBIO  # 改這行即可</span></pre></div>
+<div class="code-tab-content" id="r1"><pre><span class="comment"># R 註釋與篩選 / R annotation and filtering</span>
+<span class="func">library</span>(VariantAnnotation); <span class="func">library</span>(GenomicFeatures)
+<span class="func">library</span>(TxDb.Hsapiens.UCSC.hg38.knownGene)
+
+vcf &lt;- <span class="func">readVcf</span>(<span class="str">"cohort.vcf.gz"</span>, <span class="str">"hg38"</span>)
+txdb &lt;- TxDb.Hsapiens.UCSC.hg38.knownGene
+
+<span class="comment"># 取 high-impact missense / stop-gain</span>
+coding &lt;- <span class="func">predictCoding</span>(vcf, txdb, seqSource=<span class="func">FaFile</span>(<span class="str">"ref.fa"</span>))
+miss   &lt;- coding[coding$CONSEQUENCE %in% <span class="func">c</span>(<span class="str">"nonsynonymous"</span>, <span class="str">"stop"</span>)]
+
+<span class="comment"># 與 ClinVar 對接</span>
+<span class="func">library</span>(myvariant)
+ann &lt;- <span class="func">getVariants</span>(<span class="func">names</span>(miss),
+                   fields = <span class="str">"clinvar.rcv.clinical_significance,gnomad_exome.af"</span>)</pre></div>
+</div>
+</section>
+
+<section class="quiz-section">
+<h3>📝 <span data-zh="自我檢測" data-en="Self-Check">自我檢測</span></h3>
+<div class="quiz-q" data-answer="2" data-exp-zh="VQSR 用機器學習在「真實 variant 性質」上做過濾，是 cohort variant filter 的金標準。" data-exp-en="VQSR machine-learns the properties of true variants — the gold standard cohort variant filter.">
+<p data-lang="zh">1. GATK 流程中哪個步驟使用機器學習在 cohort-level 過濾低品質 variant？</p>
+<p data-lang="en">1. Which GATK step uses machine learning to filter low-quality variants at cohort level?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">BQSR</div><div class="quiz-opt" data-idx="1">MarkDuplicates</div><div class="quiz-opt" data-idx="2">VQSR</div><div class="quiz-opt" data-idx="3">HaplotypeCaller</div>
+</div><div class="quiz-feedback"></div></div>
+<div class="quiz-q" data-answer="0" data-exp-zh="ClinVar 是人工策展、5 級臨床致病性分類資料庫，由 NCBI 維護。" data-exp-en="ClinVar is the NCBI-maintained, human-curated 5-tier clinical significance database.">
+<p data-lang="zh">2. 想查詢一個 variant 是否被臨床判定為致病，最直接的資料庫？</p>
+<p data-lang="en">2. To check if a variant has clinical pathogenicity classification, the most direct database?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">ClinVar</div><div class="quiz-opt" data-idx="1">gnomAD</div><div class="quiz-opt" data-idx="2">UniProt</div><div class="quiz-opt" data-idx="3">Reactome</div>
+</div><div class="quiz-feedback"></div></div>
+<div class="quiz-q" data-answer="3" data-exp-zh="Mutect2 為 GATK 的 somatic 變異呼叫器，預設 tumor-normal paired mode。" data-exp-en="Mutect2 is GATK's somatic variant caller, default tumor-normal paired mode.">
+<p data-lang="zh">3. 想做 tumor-normal paired 體細胞變異呼叫，最常用的 GATK 工具？</p>
+<p data-lang="en">3. For tumor-normal paired somatic calling, the standard GATK tool?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">HaplotypeCaller</div><div class="quiz-opt" data-idx="1">VariantRecalibrator</div><div class="quiz-opt" data-idx="2">GenotypeGVCFs</div><div class="quiz-opt" data-idx="3">Mutect2</div>
+</div><div class="quiz-feedback"></div></div>
+</section>
+
+<nav class="page-nav">
+<a href="03-upstream-pipeline.html"><span class="nav-dir" data-zh="← 上一章" data-en="← Prev">← 上一章</span><span class="nav-title" data-zh="Ch 3 · FASTQ → counts 上游流程" data-en="Ch 3 · FASTQ → Counts Upstream Pipeline">Ch 3 · FASTQ → counts 上游流程</span></a>
+<a href="05-structural-variants.html"><span class="nav-dir" data-zh="下一章 →" data-en="Next →">下一章 →</span><span class="nav-title" data-zh="Ch 5 · 結構變異與長讀定序" data-en="Ch 5 · Structural Variants &amp; Long-read Sequencing">Ch 5 · 結構變異與長讀定序</span></a>
+</nav>
+</main>
+
+<footer class="site-footer">© Charlene — HTBA Interactive Tutorial</footer>
+<script src="i18n.js"></script>
+<script>
+window.addEventListener('scroll',()=>{const h=document.documentElement;document.getElementById('progressBar').style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100+'%';});
+function switchTab(b,id){const p=b.closest('.code-tabs');p.querySelectorAll('.code-tab-btn').forEach(x=>x.classList.remove('active'));p.querySelectorAll('.code-tab-content').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById(id).classList.add('active');}
+document.querySelectorAll('.quiz-q').forEach(q=>{const ans=+q.dataset.answer;q.querySelectorAll('.quiz-opt').forEach(o=>{o.onclick=()=>{if(q.dataset.done)return;q.dataset.done=1;const i=+o.dataset.idx,fb=q.querySelector('.quiz-feedback');q.querySelectorAll('.quiz-opt').forEach(x=>{if(+x.dataset.idx===ans)x.classList.add('correct');else if(+x.dataset.idx===i)x.classList.add('wrong');});if(i===ans){fb.className='quiz-feedback show correct-fb';fb.textContent='✓ '+(window.I18n&&window.I18n.get()==='en'?q.dataset.expEn:q.dataset.expZh);}else{fb.className='quiz-feedback show wrong-fb';fb.textContent='✗ '+(window.I18n&&window.I18n.get()==='en'?q.dataset.expEn:q.dataset.expZh);}};});});
+
+// ACMG sim
+const ACMG=[
+  {id:'PVS1',w:8,zh:'PVS1 null variant 在 LoF 致病基因',en:'PVS1 null variant in LoF-disease gene'},
+  {id:'PS1',w:4,zh:'PS1 同一氨基酸已知致病',en:'PS1 same AA change as known pathogenic'},
+  {id:'PM2',w:1,zh:'PM2 gnomAD 缺失/極稀有',en:'PM2 absent/ultra-rare in gnomAD'},
+  {id:'PP3',w:1,zh:'PP3 多個 in silico 預測有害',en:'PP3 multiple in-silico predict damaging'},
+  {id:'BA1',w:-8,zh:'BA1 gnomAD AF > 5%',en:'BA1 gnomAD AF > 5%'},
+  {id:'BS1',w:-4,zh:'BS1 AF 高於疾病預期',en:'BS1 AF higher than disease expectation'},
+  {id:'BP4',w:-1,zh:'BP4 多個 in silico 預測良性',en:'BP4 multiple in-silico predict benign'},
+];
+const wrap=document.getElementById('acmgBoxes');
+ACMG.forEach(e=>{
+  const l=document.createElement('label');
+  l.style.cssText='display:flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid var(--c-border-light);border-radius:6px;cursor:pointer;font-size:.85rem;background:var(--c-surface)';
+  const cb=document.createElement('input');cb.type='checkbox';cb.dataset.w=e.w;cb.onchange=updACMG;
+  const sp1=document.createElement('span');sp1.dataset.lang='zh';sp1.textContent=e.zh;
+  const sp2=document.createElement('span');sp2.dataset.lang='en';sp2.textContent=e.en;sp2.style.display='none';
+  l.append(cb,sp1,sp2);wrap.append(l);
+});
+function updACMG(){
+  let P=0,B=0;
+  document.querySelectorAll('#acmgBoxes input').forEach(cb=>{if(cb.checked){const w=+cb.dataset.w;if(w>0)P+=w;else B-=w;}});
+  document.getElementById('acmgScore').textContent='Path pts: '+P+' | Benign pts: '+B;
+  let cls='VUS', col='warn';
+  if(P>=8 && B<2) {cls='Pathogenic'; col='fail';}
+  else if(P>=6) {cls='Likely Pathogenic'; col='fail';}
+  else if(B>=8) {cls='Benign'; col='pass';}
+  else if(B>=6) {cls='Likely Benign'; col='pass';}
+  const e=document.getElementById('acmgClass');e.textContent=cls;e.className='sim-stat '+col;
+}
+updACMG();
+document.addEventListener('langchange',e=>{const l=e.detail.lang;document.querySelectorAll('#acmgBoxes [data-lang]').forEach(s=>s.style.display=s.dataset.lang===l?'':'none');});
+</script>
+</body></html>

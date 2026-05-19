@@ -1,0 +1,177 @@
+<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Ch 7: DNA 甲基化 — HTBA</title>
+<link rel="stylesheet" href="styles.css">
+</head><body>
+<nav class="top-nav"><div class="top-nav-inner">
+  <a href="index.html" class="top-nav-brand"><span>🧬</span> <span data-zh="高通量分析與整合" data-en="HTBA Tutorial">高通量分析與整合</span></a>
+  <ul class="top-nav-links">
+    <li><a href="01-overview.html">01</a></li><li><a href="02-experimental-design.html">02</a></li><li><a href="03-upstream-pipeline.html">03</a></li><li><a href="04-genomics-variants.html">04</a></li><li><a href="05-structural-variants.html">05</a></li><li><a href="06-atac-cutrun.html">06</a></li><li><a href="07-dna-methylation.html" class="active">07</a></li><li><a href="08-bulk-rnaseq.html">08</a></li><li><a href="09-scrnaseq.html">09</a></li><li><a href="10-spatial-omics.html">10</a></li><li><a href="11-long-read-rna.html">11</a></li><li><a href="12-proteomics.html">12</a></li><li><a href="13-metabolomics.html">13</a></li><li><a href="14-batch-correction.html">14</a></li><li><a href="15-multiomics-integration.html">15</a></li><li><a href="16-spatial-singlecell.html">16</a></li><li><a href="17-functional-enrichment.html">17</a></li><li><a href="18-network-analysis.html">18</a></li><li><a href="19-foundation-models.html">19</a></li><li><a href="20-reproducibility.html">20</a></li>
+    <li><a href="references/index.html" data-zh="📚 參考資料" data-en="📚 References">📚 參考資料</a></li>
+  </ul>
+</div></nav>
+<div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
+
+<header class="page-hero"><div class="step-badge">CH 7 / 20 · BLOCK 2 GENOMICS</div>
+<h1 data-zh="DNA 甲基化 (Methylation)" data-en="DNA Methylation">DNA 甲基化</h1>
+<p class="subtitle" data-lang="zh">Bisulfite、EM-seq、EPIC array、長讀直讀 — 4 種測量加上 DMP/DMR 統計與 epigenetic age clock。</p>
+<p class="subtitle" data-lang="en">Bisulfite, EM-seq, EPIC arrays, long-read direct calling — four measurements plus DMP/DMR statistics and epigenetic age clocks.</p>
+</header>
+
+<main class="content-wrap">
+
+<section class="section">
+<div class="section-label" data-zh="技術" data-en="TECHNOLOGIES">技術</div>
+<h2 data-zh="一、四種主要的甲基化測量技術" data-en="I. Four Main Methylation Technologies">一、四種測量技術</h2>
+<table class="comp-table">
+<thead><tr><th data-zh="技術" data-en="Tech">技術</th><th data-zh="原理" data-en="Principle">原理</th><th data-zh="覆蓋" data-en="Coverage">覆蓋</th><th data-zh="優缺點" data-en="Pros / Cons">優缺點</th></tr></thead>
+<tbody>
+<tr><td><strong>WGBS</strong></td><td>Bisulfite → C→U（除非 5mC）</td><td data-zh="全基因組 CpG" data-en="Whole-genome CpG">全 CpG</td><td data-zh="金標準；DNA 破壞、需高深度 (30×)、成本高" data-en="Gold standard; DNA-damaging, needs high depth (30×), expensive">破壞、高深度</td></tr>
+<tr><td><strong>RRBS</strong></td><td data-zh="MspI 切 CCGG → 富集 CpG-rich 區" data-en="MspI cuts CCGG → enriches CpG-rich regions">MspI 富集</td><td data-zh="~5% CpG (promoter / island)" data-en="~5% CpG (promoter / island)">~5%</td><td data-zh="成本低、聚焦 CpG island" data-en="Cheap, focused on CpG islands">便宜、限制</td></tr>
+<tr><td><strong>EM-seq</strong></td><td data-zh="酵素轉換（TET2 + APOBEC3A），非 bisulfite" data-en="Enzymatic conversion (TET2 + APOBEC3A), no bisulfite">酵素</td><td data-zh="全 CpG（替代 WGBS）" data-en="Whole-genome CpG (WGBS replacement)">全 CpG</td><td data-zh="不破壞 DNA、更均勻、低 input；2020+ 已成主流" data-en="Non-damaging, more uniform, low input; mainstream since 2020">推薦取代 WGBS</td></tr>
+<tr><td><strong>EPIC v2 array</strong></td><td data-zh="bead-array 探針，~935k 位點" data-en="Bead array, ~935k sites">~935k 位點</td><td data-zh="預設位點（針對臨床 / 大 cohort）" data-en="Pre-selected sites (clinical / large cohort)">固定</td><td data-zh="成本最低、最易跨樣本比較；無 novel 位點" data-en="Cheapest, easiest cross-sample comparison; no novel sites">最便宜、固定</td></tr>
+<tr><td><strong>ONT / PacBio direct</strong></td><td data-zh="long-read 直接偵測 5mC, 5hmC, 6mA" data-en="Long-read direct 5mC, 5hmC, 6mA">所有修飾</td><td data-zh="全基因組（含重複區）" data-en="Whole-genome (incl. repeats)">完整</td><td data-zh="同時讀序與修飾、相位解析；化學成熟中" data-en="Sequence + modification + phasing; chemistry maturing">2024+ 主流</td></tr>
+</tbody></table>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="分析流程" data-en="WORKFLOW">分析流程</div>
+<h2 data-zh="二、Bisulfite / EM-seq 標準流程" data-en="II. Bisulfite / EM-seq Standard Workflow">二、分析流程</h2>
+<div class="workflow">
+<div class="workflow-step" data-step="1"><h4 data-zh="比對（bisulfite-aware）" data-en="Alignment (bisulfite-aware)">比對</h4><p data-lang="zh"><strong>Bismark</strong>（最通用）、<strong>bwa-meth</strong>（快）、<strong>BS-Seeker2</strong>。EM-seq 用同樣工具。</p><p data-lang="en"><strong>Bismark</strong> (most popular), <strong>bwa-meth</strong> (fast), <strong>BS-Seeker2</strong>. Same tools for EM-seq.</p></div>
+<div class="workflow-step" data-step="2"><h4 data-zh="甲基化呼叫" data-en="Methylation extraction">甲基化呼叫</h4><p data-lang="zh">Bismark methylation extractor 輸出 per-CpG β value = methylated / (methylated + unmethylated)。</p><p data-lang="en">Bismark methylation extractor outputs per-CpG β = methylated / (methylated + unmethylated).</p></div>
+<div class="workflow-step" data-step="3"><h4>DMP / DMR</h4><p data-lang="zh"><strong>methylKit</strong>、<strong>DSS</strong>（Bayesian smoothing）、<strong>bsseq</strong>、<strong>RnBeads</strong>。Array 用 <strong>minfi</strong> 或 <strong>ChAMP</strong>。</p><p data-lang="en"><strong>methylKit</strong>, <strong>DSS</strong> (Bayesian smoothing), <strong>bsseq</strong>, <strong>RnBeads</strong>. Arrays: <strong>minfi</strong> or <strong>ChAMP</strong>.</p></div>
+<div class="workflow-step" data-step="4"><h4 data-zh="細胞型態 deconvolution" data-en="Cell-type deconvolution">細胞 deconvolution</h4><p data-lang="zh">Bulk 甲基化常用 <strong>EpiDISH</strong>、<strong>methylCC</strong> 估算組織內細胞比例（血液最成熟，含 Houseman 參考）。</p><p data-lang="en">For bulk methylation, <strong>EpiDISH</strong>, <strong>methylCC</strong> deconvolve cell-type proportions (blood is most mature, e.g., Houseman reference).</p></div>
+<div class="workflow-step" data-step="5"><h4 data-zh="表觀年齡時鐘" data-en="Epigenetic age clocks">表觀年齡</h4><p data-lang="zh"><strong>Horvath</strong> (353 CpG)、<strong>Hannum</strong>、<strong>PhenoAge</strong>、<strong>GrimAge</strong>、<strong>DunedinPACE</strong> (2022)、<strong>CausAge</strong> — 加速老化指標廣泛用於老化與疾病研究。</p><p data-lang="en"><strong>Horvath</strong> (353 CpG), <strong>Hannum</strong>, <strong>PhenoAge</strong>, <strong>GrimAge</strong>, <strong>DunedinPACE</strong> (2022), <strong>CausAge</strong> — accelerated-aging metrics widely used in aging / disease studies.</p></div>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="互動" data-en="INTERACTIVE">互動</div>
+<h2 data-zh="三、DMR 偵測閾值模擬" data-en="III. DMR Threshold Simulator">三、DMR 偵測模擬</h2>
+<div data-lang="zh"><p>調整 Δβ 與 q-value 閾值，看「真實 DMR vs 雜訊」如何被分類。生物上常用 |Δβ| ≥ 10% (0.1) + q &lt; 0.05。</p></div>
+<div data-lang="en"><p>Move Δβ and q-value cutoffs to see how "true DMRs vs noise" are classified. Biologically common: |Δβ| ≥ 10% (0.1) + q &lt; 0.05.</p></div>
+<div class="interactive-panel">
+<div class="sim-stats"><span class="sim-stat pass" id="dmrTP">TP: —</span><span class="sim-stat fail" id="dmrFP">FP: —</span><span class="sim-stat warn" id="dmrFN">FN: —</span></div>
+<div class="slider-group"><label><span>|Δβ| ≥</span><span id="dDv">0.10</span></label><input type="range" id="dD" min="0.01" max="0.4" value="0.10" step="0.01"></div>
+<div class="slider-group"><label><span>q-value &lt;</span><span id="dQv">0.05</span></label><input type="range" id="dQ" min="0.001" max="0.2" value="0.05" step="0.005"></div>
+<canvas id="dCanvas" style="background:var(--c-surface-alt);border-radius:8px;width:100%;height:280px"></canvas>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="程式碼" data-en="CODE">程式碼</div>
+<h2 data-zh="四、Bismark + methylKit 完整流程" data-en="IV. Bismark + methylKit Pipeline">四、實作</h2>
+<div class="code-tabs"><div class="code-tab-btns"><button class="code-tab-btn active" onclick="switchTab(this,'sh1')">Shell / Bismark</button><button class="code-tab-btn" onclick="switchTab(this,'r1')">R / methylKit (WGBS)</button><button class="code-tab-btn" onclick="switchTab(this,'r2')">R / minfi (EPIC)</button></div>
+<div class="code-tab-content active" id="sh1"><pre><span class="comment"># 1. 建索引（一次性）</span>
+<span class="func">bismark_genome_preparation</span> --bowtie2 GRCh38/
+
+<span class="comment"># 2. 比對</span>
+<span class="func">bismark</span> --genome GRCh38/ -1 R1.fq.gz -2 R2.fq.gz \
+        -p <span class="num">8</span> --output_dir bm/
+
+<span class="comment"># 3. 去重複 + 甲基化擷取</span>
+<span class="func">deduplicate_bismark</span> --paired bm/sample_pe.bam
+<span class="func">bismark_methylation_extractor</span> --paired-end --comprehensive \
+        --bedGraph --genome_folder GRCh38/ bm/sample_pe.deduplicated.bam
+
+<span class="comment"># 4. 報告</span>
+<span class="func">bismark2report</span>; <span class="func">multiqc</span> bm/</pre></div>
+<div class="code-tab-content" id="r1"><pre><span class="comment"># methylKit — DMR 偵測</span>
+<span class="func">library</span>(methylKit)
+files &lt;- <span class="func">list</span>(<span class="str">"ctrl1.CpG"</span>, <span class="str">"ctrl2.CpG"</span>, <span class="str">"trt1.CpG"</span>, <span class="str">"trt2.CpG"</span>)
+meth  &lt;- <span class="func">methRead</span>(files, sample.id=<span class="func">list</span>(<span class="str">"c1"</span>,<span class="str">"c2"</span>,<span class="str">"t1"</span>,<span class="str">"t2"</span>),
+                  assembly=<span class="str">"hg38"</span>, treatment=<span class="func">c</span>(<span class="num">0</span>,<span class="num">0</span>,<span class="num">1</span>,<span class="num">1</span>),
+                  context=<span class="str">"CpG"</span>, mincov=<span class="num">10</span>)
+united &lt;- <span class="func">unite</span>(meth)
+
+<span class="comment"># DMP（單一 CpG）</span>
+dmp &lt;- <span class="func">calculateDiffMeth</span>(united, mc.cores=<span class="num">8</span>)
+sig &lt;- <span class="func">getMethylDiff</span>(dmp, difference=<span class="num">10</span>, qvalue=<span class="num">0.05</span>)
+
+<span class="comment"># DMR（合併鄰近 sig CpG）</span>
+tiles &lt;- <span class="func">tileMethylCounts</span>(meth, win.size=<span class="num">1000</span>, step.size=<span class="num">1000</span>)
+dmr &lt;- <span class="func">calculateDiffMeth</span>(<span class="func">unite</span>(tiles)) |&gt;
+       <span class="func">getMethylDiff</span>(difference=<span class="num">10</span>, qvalue=<span class="num">0.05</span>)</pre></div>
+<div class="code-tab-content" id="r2"><pre><span class="comment"># minfi — EPIC v2 array</span>
+<span class="func">library</span>(minfi); <span class="func">library</span>(IlluminaHumanMethylationEPICv2anno.20a1.hg38)
+rgset &lt;- <span class="func">read.metharray.exp</span>(targets = pheno, force=<span class="kw">TRUE</span>)
+gmset &lt;- <span class="func">preprocessFunnorm</span>(rgset)        <span class="comment"># normalization</span>
+gmset &lt;- gmset[!<span class="func">is.na</span>(<span class="func">rowSums</span>(<span class="func">getBeta</span>(gmset))), ]
+
+<span class="comment"># DMP（site-level）</span>
+beta &lt;- <span class="func">getBeta</span>(gmset)
+dmp  &lt;- <span class="func">dmpFinder</span>(beta, pheno = pheno$group, type=<span class="str">"categorical"</span>)
+sig  &lt;- dmp[dmp$qval &lt; <span class="num">0.05</span>, ]
+
+<span class="comment"># DMR（bump-hunting）</span>
+<span class="func">library</span>(bumphunter)
+dmr &lt;- <span class="func">bumphunter</span>(gmset, design=<span class="func">model.matrix</span>(~pheno$group),
+                  cutoff=<span class="num">0.10</span>, B=<span class="num">1000</span>)</pre></div>
+</div>
+</section>
+
+<section class="quiz-section">
+<h3>📝 <span data-zh="自我檢測" data-en="Self-Check">自我檢測</span></h3>
+<div class="quiz-q" data-answer="2" data-exp-zh="EM-seq 用酵素轉換，DNA 不破壞、需要的 input 更低，已逐步取代 WGBS。" data-exp-en="EM-seq uses enzymatic conversion — non-damaging and low input, gradually replacing WGBS.">
+<p data-lang="zh">1. 想取得全基因組 CpG 甲基化但 DNA 量稀少，最佳技術？</p>
+<p data-lang="en">1. Whole-genome CpG methylation with limited DNA — best technology?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">EPIC v2 array</div><div class="quiz-opt" data-idx="1">WGBS</div><div class="quiz-opt" data-idx="2">EM-seq</div><div class="quiz-opt" data-idx="3">ATAC-seq</div>
+</div><div class="quiz-feedback"></div></div>
+<div class="quiz-q" data-answer="0" data-exp-zh="Horvath 是首個跨組織 epigenetic age clock，僅使用 353 個 CpG sites。" data-exp-en="Horvath was the first pan-tissue epigenetic age clock, using just 353 CpG sites.">
+<p data-lang="zh">2. 第一個橫跨多種組織的 epigenetic age clock？</p>
+<p data-lang="en">2. The first pan-tissue epigenetic age clock?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">Horvath</div><div class="quiz-opt" data-idx="1">Geneformer</div><div class="quiz-opt" data-idx="2">Bismark</div><div class="quiz-opt" data-idx="3">DESeq2</div>
+</div><div class="quiz-feedback"></div></div>
+<div class="quiz-q" data-answer="1" data-exp-zh="ONT 與 PacBio Kinetics 能在不轉換 DNA 的情況下直接讀出 5mC/5hmC/6mA 與序列。" data-exp-en="ONT and PacBio kinetics can read 5mC/5hmC/6mA together with sequence — no DNA conversion needed.">
+<p data-lang="zh">3. 同時取得 DNA 序列與 5mC/5hmC/6mA 的最直接技術？</p>
+<p data-lang="en">3. Most direct technology to get DNA sequence + 5mC/5hmC/6mA simultaneously?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">RRBS</div><div class="quiz-opt" data-idx="1"><span data-lang="zh">ONT / PacBio 直讀</span><span data-lang="en">ONT / PacBio direct</span></div><div class="quiz-opt" data-idx="2">EPIC array</div><div class="quiz-opt" data-idx="3">WGBS</div>
+</div><div class="quiz-feedback"></div></div>
+</section>
+
+<nav class="page-nav">
+<a href="06-atac-cutrun.html"><span class="nav-dir" data-zh="← 上一章" data-en="← Prev">← 上一章</span><span class="nav-title" data-zh="Ch 6 · ATAC-seq 與 CUT&amp;amp;RUN / CUT&amp;amp;Tag" data-en="Ch 6 · ATAC-seq &amp; CUT&amp;RUN / CUT&amp;Tag">Ch 6 · ATAC-seq 與 CUT&amp;RUN / CUT&amp;Tag</span></a>
+<a href="08-bulk-rnaseq.html"><span class="nav-dir" data-zh="下一章 →" data-en="Next →">下一章 →</span><span class="nav-title" data-zh="Ch 8 · Bulk RNA-seq 差異表達分析" data-en="Ch 8 · Bulk RNA-seq Differential Expression">Ch 8 · Bulk RNA-seq 差異表達分析</span></a>
+</nav>
+</main>
+
+<footer class="site-footer">© Charlene — HTBA Interactive Tutorial</footer>
+<script src="i18n.js"></script>
+<script>
+window.addEventListener('scroll',()=>{const h=document.documentElement;document.getElementById('progressBar').style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100+'%';});
+function switchTab(b,id){const p=b.closest('.code-tabs');p.querySelectorAll('.code-tab-btn').forEach(x=>x.classList.remove('active'));p.querySelectorAll('.code-tab-content').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById(id).classList.add('active');}
+document.querySelectorAll('.quiz-q').forEach(q=>{const ans=+q.dataset.answer;q.querySelectorAll('.quiz-opt').forEach(o=>{o.onclick=()=>{if(q.dataset.done)return;q.dataset.done=1;const i=+o.dataset.idx,fb=q.querySelector('.quiz-feedback');q.querySelectorAll('.quiz-opt').forEach(x=>{if(+x.dataset.idx===ans)x.classList.add('correct');else if(+x.dataset.idx===i)x.classList.add('wrong');});if(i===ans){fb.className='quiz-feedback show correct-fb';fb.textContent='✓ '+(window.I18n&&window.I18n.get()==='en'?q.dataset.expEn:q.dataset.expZh);}else{fb.className='quiz-feedback show wrong-fb';fb.textContent='✗ '+(window.I18n&&window.I18n.get()==='en'?q.dataset.expEn:q.dataset.expZh);}};});});
+// DMR sim
+const cv=document.getElementById('dCanvas'),ctx=cv.getContext('2d');
+function r(){let u=0,v=0;while(u===0)u=Math.random();while(v===0)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+const pts=[];
+for(let i=0;i<800;i++){const isDMR=Math.random()<0.18;pts.push({db:isDMR?(Math.random()*0.4+0.05)*(Math.random()<.5?-1:1):r()*0.04,q:isDMR?Math.pow(10,-(3+Math.random()*3)):Math.pow(10,-(0.5+Math.random()*1.5)),real:isDMR});}
+function draw(){
+  const d=+document.getElementById('dD').value,q=+document.getElementById('dQ').value;
+  document.getElementById('dDv').textContent=d.toFixed(2);document.getElementById('dQv').textContent=q.toFixed(3);
+  const w=cv.width=cv.offsetWidth,h=cv.height=cv.offsetHeight;
+  ctx.fillStyle='#eef5f7';ctx.fillRect(0,0,w,h);
+  ctx.strokeStyle='#d97706';ctx.setLineDash([4,3]);
+  // Δβ cutoff lines (vertical)
+  ctx.beginPath();const xL=(0.5-d/1)*w;ctx.moveTo(xL,0);ctx.lineTo(xL,h);const xR=(0.5+d/1)*w;ctx.moveTo(xR,0);ctx.lineTo(xR,h);ctx.stroke();
+  // q cutoff (horizontal)
+  const yQ=h-(-Math.log10(q)/6)*h;ctx.beginPath();ctx.moveTo(0,yQ);ctx.lineTo(w,yQ);ctx.stroke();ctx.setLineDash([]);
+  let TP=0,FP=0,FN=0,TN=0;
+  pts.forEach(p=>{const x=(0.5+p.db/1)*w,y=h-(-Math.log10(p.q)/6)*h;const sig=Math.abs(p.db)>=d&&p.q<q;
+    if(p.real&&sig)TP++;else if(!p.real&&sig)FP++;else if(p.real&&!sig)FN++;else TN++;
+    ctx.fillStyle=p.real?(sig?'#059669':'#fb7185'):(sig?'#dc2626':'#94a3b8');
+    ctx.beginPath();ctx.arc(x,y,2.5,0,Math.PI*2);ctx.fill();
+  });
+  ctx.fillStyle='#0f172a';ctx.font='10px sans-serif';
+  ctx.fillText('|Δβ|',w/2-12,h-2);ctx.fillText('-log10(q)',2,12);
+  document.getElementById('dmrTP').textContent='TP: '+TP;
+  document.getElementById('dmrFP').textContent='FP: '+FP;
+  document.getElementById('dmrFN').textContent='FN: '+FN;
+}
+['dD','dQ'].forEach(id=>document.getElementById(id).oninput=draw);
+window.addEventListener('resize',draw);setTimeout(draw,50);
+</script>
+</body></html>

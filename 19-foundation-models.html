@@ -1,0 +1,187 @@
+<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Ch 19: 生物基礎模型 — HTBA</title>
+<link rel="stylesheet" href="styles.css">
+</head><body>
+<nav class="top-nav"><div class="top-nav-inner">
+  <a href="index.html" class="top-nav-brand"><span>🧬</span> <span data-zh="高通量分析與整合" data-en="HTBA Tutorial">高通量分析與整合</span></a>
+  <ul class="top-nav-links"><li><a href="01-overview.html">01</a></li><li><a href="02-experimental-design.html">02</a></li><li><a href="03-upstream-pipeline.html">03</a></li><li><a href="04-genomics-variants.html">04</a></li><li><a href="05-structural-variants.html">05</a></li><li><a href="06-atac-cutrun.html">06</a></li><li><a href="07-dna-methylation.html">07</a></li><li><a href="08-bulk-rnaseq.html">08</a></li><li><a href="09-scrnaseq.html">09</a></li><li><a href="10-spatial-omics.html">10</a></li><li><a href="11-long-read-rna.html">11</a></li><li><a href="12-proteomics.html">12</a></li><li><a href="13-metabolomics.html">13</a></li><li><a href="14-batch-correction.html">14</a></li><li><a href="15-multiomics-integration.html">15</a></li><li><a href="16-spatial-singlecell.html">16</a></li><li><a href="17-functional-enrichment.html">17</a></li><li><a href="18-network-analysis.html">18</a></li><li><a href="19-foundation-models.html" class="active">19</a></li><li><a href="20-reproducibility.html">20</a></li>
+    <li><a href="references/index.html" data-zh="📚 參考資料" data-en="📚 References">📚 參考資料</a></li>
+  </ul>
+</div></nav>
+<div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
+
+<header class="page-hero"><div class="step-badge">CH 19 / 20 · BLOCK 6 FOUNDATION MODELS</div>
+<h1 data-zh="生物基礎模型 (Foundation Models)" data-en="Bio Foundation Models">生物基礎模型</h1>
+<p class="subtitle" data-lang="zh">scGPT、Geneformer、ESM-3、AlphaFold 3、Tahoe-100M — 它們能做什麼，又有哪些誇大？</p>
+<p class="subtitle" data-lang="en">scGPT, Geneformer, ESM-3, AlphaFold 3, Tahoe-100M — what they can do, and where the hype falls short.</p>
+</header>
+
+<main class="content-wrap">
+
+<section class="section">
+<div class="section-label" data-zh="什麼是 foundation model" data-en="WHAT ARE FMs">基本概念</h2>
+<h2 data-zh="一、什麼是生物 foundation model？" data-en="I. What Is a Bio Foundation Model?">一、概念</h2>
+<div data-lang="zh"><p>定義：<strong>在大規模生物資料（千萬至億級樣本）以 self-supervised 預訓練的大型 Transformer / GNN</strong>，可遷移到多個下游任務（cell type、perturbation response、protein function、drug-target、structure prediction）。</p>
+<p>2023-2025 是「scaling laws 進入生醫」的年代。文獻指出：</p>
+<ul><li>有些 zero-shot 任務 foundation model 不如傳統 ML（Boiarsky et al. 2024、Microsoft 2025）— 大模型 ≠ 自動更好；</li><li>但在 perturbation prediction、cross-species transfer、low-data fine-tune 場景上，預訓練優勢明確。</li></ul></div>
+<div data-lang="en"><p>Definition: <strong>large Transformers / GNNs pre-trained self-supervised on massive biological corpora (tens of millions to billions of samples)</strong>, transferable to many downstream tasks (cell type, perturbation response, protein function, drug-target, structure prediction).</p>
+<p>2023-2025 is the era of "scaling laws meet biology." Literature notes:</p>
+<ul><li>For some zero-shot tasks, foundation models underperform classical ML (Boiarsky et al. 2024, Microsoft 2025) — bigger ≠ automatically better;</li><li>But for perturbation prediction, cross-species transfer, and low-data fine-tuning, pretraining advantages are clear.</li></ul></div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="模型概覽" data-en="MODELS">模型概覽</h2>
+<h2 data-zh="二、主流生醫 foundation model" data-en="II. Mainstream Bio Foundation Models">二、模型概覽</h2>
+<table class="comp-table">
+<thead><tr><th>Model</th><th data-zh="領域" data-en="Domain">領域</th><th data-zh="預訓練資料" data-en="Pretraining">預訓練</th><th data-zh="任務" data-en="Tasks">任務</th></tr></thead>
+<tbody>
+<tr><td><strong>scGPT (2024)</strong></td><td>scRNA</td><td>33M cells</td><td data-zh="cell-type、perturbation、batch integration" data-en="Cell-type, perturbation, batch integration">分類、perturbation</td></tr>
+<tr><td><strong>Geneformer (2023, V2 2024)</strong></td><td>scRNA</td><td>30M cells</td><td data-zh="基因網絡、in silico KO、disease classification" data-en="Gene networks, in silico KO, disease classification">in silico KO</td></tr>
+<tr><td><strong>scFoundation (2024)</strong></td><td>scRNA</td><td>50M cells</td><td data-zh="cell-type + drug response prediction" data-en="Cell-type + drug-response prediction">drug response</td></tr>
+<tr><td><strong>UCE / LangCell (2024)</strong></td><td>scRNA</td><td>~30M cells</td><td data-zh="zero-shot cell embedding；LangCell 結合文字" data-en="Zero-shot cell embedding; LangCell adds text">zero-shot</td></tr>
+<tr><td><strong>ESM-3 (2024)</strong></td><td data-zh="蛋白序列" data-en="Protein sequence">蛋白序列</td><td>~770M proteins</td><td data-zh="序列 → 結構 → 功能；可生成新蛋白" data-en="Sequence → structure → function; protein generation">protein design</td></tr>
+<tr><td><strong>AlphaFold 3 (2024, CC-BY-NC-SA)</strong></td><td data-zh="結構預測" data-en="Structure">結構</td><td>PDB + multimer</td><td data-zh="蛋白 + DNA / RNA / ligand + ions" data-en="Protein + DNA / RNA / ligand + ions">complex structure</td></tr>
+<tr><td><strong>Boltz-1 / Boltz-2 (2024 / 2025)</strong></td><td data-zh="結構預測" data-en="Structure">結構</td><td>PDB</td><td data-zh="開源 AF3 等效模型 (MIT)" data-en="Open-source AF3-equivalent (MIT)">open AF3</td></tr>
+<tr><td><strong>Tahoe-100M (2025)</strong></td><td data-zh="scRNA + perturbation" data-en="scRNA + perturbation">scRNA</td><td data-zh="100M cells, 1000+ drugs × 50 cancer lines" data-en="100M cells, 1000+ drugs × 50 cancer lines">100M cells</td><td data-zh="drug response 預訓練資源" data-en="Drug-response pretraining resource">資料集</td></tr>
+<tr><td><strong>Evo / Evo 2 (2024 / 2025)</strong></td><td data-zh="DNA" data-en="DNA">DNA</td><td>~2.7 trillion nt</td><td data-zh="全基因組 long-context DNA model" data-en="Long-context DNA model">DNA LM</td></tr>
+</tbody></table>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="現實檢驗" data-en="REALITY CHECK">現實檢驗</h2>
+<h2 data-zh="三、Reality check — 別買 hype" data-en="III. Reality Check — Don't Buy the Hype">三、別買 hype</h2>
+<div class="callout warn"><span class="callout-icon">⚠️</span><div>
+<span data-lang="zh"><strong>2024-2025 benchmark 大量警告：</strong><br>• Boiarsky et al. (Microsoft Research, 2024)：scGPT / Geneformer 在 zero-shot batch integration 表現不如 Harmony / scVI，甚至不如 HVG。<br>• Liu et al. Adv Sci 2025：foundation models 在 cell-type annotation 上有時不如 scANVI；在 perturbation 與 cross-species transfer 才看到真正優勢。<br>• 2025 mechanistic 研究：scGPT / Geneformer 學到的多是 co-expression / pathway 結構，<strong>不是因果調控</strong>。</span>
+<span data-lang="en"><strong>Reality from 2024–2025 benchmarks:</strong><br>• Boiarsky et al. (MSR 2024): scGPT / Geneformer trail Harmony / scVI on zero-shot batch integration — sometimes worse than HVG alone.<br>• Liu et al. Adv Sci 2025: foundation models can be beaten by scANVI on cell-type annotation; their real edge appears in perturbation and cross-species transfer.<br>• 2025 mechanistic studies: scGPT / Geneformer mostly learn co-expression / pathway structure — <strong>not causal regulatory logic</strong>.</span>
+</div></div>
+<div class="callout tip"><span class="callout-icon">💡</span><div>
+<span data-lang="zh"><strong>Best practice：</strong>用 foundation model 做特徵抽取（embedding），但統計分析仍用傳統 DESeq2 / Wilcoxon；fine-tuning 一定要做 hold-out test；report 與傳統方法的比較。</span>
+<span data-lang="en"><strong>Best practice:</strong> Use FMs for feature extraction (embeddings), but keep statistical inference with DESeq2 / Wilcoxon; always hold out a test set when fine-tuning; report comparisons against classical methods.</span>
+</div></div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="互動" data-en="INTERACTIVE">互動</h2>
+<h2 data-zh="四、FM scaling vs. task difficulty" data-en="IV. FM Scaling vs. Task Difficulty">四、Scaling 直覺</h2>
+<div class="interactive-panel">
+<div class="sim-stats"><span class="sim-stat pass" id="fmS">FM benefit: —</span></div>
+<div class="slider-group"><label><span data-zh="任務複雜度 (0=簡單分類, 1=perturbation)" data-en="Task complexity">任務複雜度</span><span id="fmTv">0.5</span></label><input type="range" id="fmT" min="0" max="1" value="0.5" step="0.05"></div>
+<div class="slider-group"><label><span data-zh="可用標註樣本 (log10)" data-en="Labeled samples (log10)">標註資料</span><span id="fmNv">2.5</span></label><input type="range" id="fmN" min="1" max="6" value="2.5" step="0.1"></div>
+<canvas id="fmCv" style="background:var(--c-surface-alt);border-radius:8px;width:100%;height:220px"></canvas>
+</div>
+</section>
+
+<section class="section">
+<div class="section-label" data-zh="程式碼" data-en="CODE">程式碼</div>
+<h2 data-zh="五、scGPT / Geneformer / ESM-3 範例" data-en="V. scGPT / Geneformer / ESM-3 Examples">五、實作</h2>
+<div class="code-tabs"><div class="code-tab-btns"><button class="code-tab-btn active" onclick="switchTab(this,'py1')">Python / scGPT</button><button class="code-tab-btn" onclick="switchTab(this,'py2')">Python / Geneformer</button><button class="code-tab-btn" onclick="switchTab(this,'py3')">Python / ESM-3</button></div>
+<div class="code-tab-content active" id="py1"><pre><span class="comment"># scGPT — zero-shot embedding + fine-tune</span>
+<span class="kw">import</span> scgpt
+adata = scgpt.tasks.<span class="func">embed_data</span>(
+    adata, model_dir=<span class="str">"./scgpt_human_pretrained"</span>,
+    batch_size=<span class="num">64</span>, use_fast_transformer=<span class="kw">True</span>)
+
+<span class="comment"># 把 embedding 當 PCA 用</span>
+sc.pp.<span class="func">neighbors</span>(adata, use_rep=<span class="str">"X_scGPT"</span>)
+sc.tl.<span class="func">umap</span>(adata); sc.tl.<span class="func">leiden</span>(adata, resolution=<span class="num">0.5</span>)
+
+<span class="comment"># 比較與 Harmony / scVI（一定要做！）</span>
+<span class="kw">from</span> scib_metrics.benchmark <span class="kw">import</span> Benchmarker
+bm = <span class="func">Benchmarker</span>(adata, batch_key=<span class="str">"batch"</span>, label_key=<span class="str">"cell_type"</span>,
+                 embedding_obsm_keys=[<span class="str">"X_scGPT"</span>, <span class="str">"X_pca_harmony"</span>])
+bm.<span class="func">benchmark</span>(); bm.<span class="func">plot_results_table</span>()</pre></div>
+<div class="code-tab-content" id="py2"><pre><span class="comment"># Geneformer — in silico perturbation</span>
+<span class="kw">from</span> geneformer <span class="kw">import</span> EmbExtractor, InSilicoPerturber
+
+emb = <span class="func">EmbExtractor</span>(model_type=<span class="str">"CellClassifier"</span>, num_classes=<span class="num">10</span>,
+                   filter_data={<span class="str">"cell_type"</span>: [<span class="str">"T cell"</span>]})
+emb.<span class="func">extract_embs</span>(<span class="str">"./Geneformer-V2-316M"</span>, <span class="str">"./tokenized.dataset"</span>,
+                  <span class="str">"./embs/"</span>, <span class="str">"output_prefix"</span>)
+
+<span class="comment"># In silico KO + 觀察 expression 改變</span>
+isp = <span class="func">InSilicoPerturber</span>(perturb_type=<span class="str">"delete"</span>,
+                        perturb_rank_shift=<span class="kw">None</span>, genes_to_perturb=[<span class="str">"FOXP3"</span>],
+                        cell_states_to_model={<span class="str">"state_key"</span>:<span class="str">"cell_type"</span>})
+isp.<span class="func">perturb_data</span>(<span class="str">"./Geneformer-V2-316M"</span>, <span class="str">"./tokenized.dataset"</span>, <span class="str">"./out/"</span>)</pre></div>
+<div class="code-tab-content" id="py3"><pre><span class="comment"># ESM-3 — 蛋白序列 → 結構 + 功能</span>
+<span class="comment"># pip install esm</span>
+<span class="kw">from</span> esm.models.esm3 <span class="kw">import</span> ESM3
+<span class="kw">from</span> esm.sdk.api <span class="kw">import</span> ESMProtein, GenerationConfig
+
+model = ESM3.<span class="func">from_pretrained</span>(<span class="str">"esm3_sm_open_v1"</span>).<span class="func">to</span>(<span class="str">"cuda"</span>)
+prot  = <span class="func">ESMProtein</span>(sequence=<span class="str">"MKTAYIAKQRQISFVK..."</span>)
+
+<span class="comment"># 預測結構 (PDB)</span>
+out = model.<span class="func">generate</span>(prot, <span class="func">GenerationConfig</span>(track=<span class="str">"structure"</span>, num_steps=<span class="num">8</span>))
+out.<span class="func">to_pdb</span>(<span class="str">"predicted.pdb"</span>)
+
+<span class="comment"># 也可給 partial structure / function 限制做 conditional generation</span></pre></div>
+</div>
+</section>
+
+<section class="quiz-section">
+<h3>📝 <span data-zh="自我檢測" data-en="Self-Check">自我檢測</span></h3>
+<div class="quiz-q" data-answer="3" data-exp-zh="2024 May DeepMind 發布 AlphaFold 3 server；2024 Nov 釋出 source code (CC-BY-NC-SA 4.0)。" data-exp-en="AlphaFold 3 server in May 2024; source code released Nov 2024 (CC-BY-NC-SA 4.0).">
+<p data-lang="zh">1. AlphaFold 3 程式碼釋出的授權？</p>
+<p data-lang="en">1. License under which AlphaFold 3 code was released?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">MIT</div><div class="quiz-opt" data-idx="1">Apache 2.0</div><div class="quiz-opt" data-idx="2">GPL v3</div><div class="quiz-opt" data-idx="3">CC-BY-NC-SA 4.0</div>
+</div><div class="quiz-feedback"></div></div>
+<div class="quiz-q" data-answer="1" data-exp-zh="2024 benchmark 顯示 scGPT / Geneformer 在 zero-shot batch integration 經常不如 Harmony / scVI；不能盲信。" data-exp-en="2024 benchmarks show scGPT / Geneformer often trail Harmony / scVI on zero-shot batch integration — don't blindly trust them.">
+<p data-lang="zh">2. scGPT / Geneformer 在 zero-shot batch integration 的 2024 benchmark 結果？</p>
+<p data-lang="en">2. 2024 benchmark for scGPT / Geneformer on zero-shot batch integration?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0"><span data-lang="zh">完勝所有傳統方法</span><span data-lang="en">Beats all classical methods</span></div><div class="quiz-opt" data-idx="1"><span data-lang="zh">經常不如 Harmony / scVI</span><span data-lang="en">Often trails Harmony / scVI</span></div><div class="quiz-opt" data-idx="2"><span data-lang="zh">與 ChIP-seq 相同</span><span data-lang="en">Same as ChIP-seq</span></div><div class="quiz-opt" data-idx="3"><span data-lang="zh">尚未被測試</span><span data-lang="en">Not yet tested</span></div>
+</div><div class="quiz-feedback"></div></div>
+<div class="quiz-q" data-answer="2" data-exp-zh="Tahoe-100M 是 2025 釋出的 100M 細胞 perturbation 資料集，含 1000+ 藥物與 50 cancer cell lines。" data-exp-en="Tahoe-100M (2025) is the 100M-cell perturbation dataset with 1000+ drugs × 50 cancer cell lines.">
+<p data-lang="zh">3. 2025 釋出的 100M 細胞 drug perturbation 大型資料集？</p>
+<p data-lang="en">3. 2025-released 100M-cell drug perturbation dataset?</p>
+<div class="quiz-options">
+<div class="quiz-opt" data-idx="0">HCA</div><div class="quiz-opt" data-idx="1">UK Biobank</div><div class="quiz-opt" data-idx="2">Tahoe-100M</div><div class="quiz-opt" data-idx="3">GTEx</div>
+</div><div class="quiz-feedback"></div></div>
+</section>
+
+<nav class="page-nav">
+<a href="18-network-analysis.html"><span class="nav-dir" data-zh="← 上一章" data-en="← Prev">← 上一章</span><span class="nav-title" data-zh="Ch 18 · 網絡分析與圖學習" data-en="Ch 18 · Network Analysis &amp; Graph Learning">Ch 18 · 網絡分析與圖學習</span></a>
+<a href="20-reproducibility.html"><span class="nav-dir" data-zh="下一章 →" data-en="Next →">下一章 →</span><span class="nav-title" data-zh="Ch 20 · 可重現性、雲端與倫理" data-en="Ch 20 · Reproducibility, Cloud &amp; Ethics">Ch 20 · 可重現性、雲端與倫理</span></a>
+</nav>
+</main>
+
+<footer class="site-footer">© Charlene — HTBA Interactive Tutorial</footer>
+<script src="i18n.js"></script>
+<script>
+window.addEventListener('scroll',()=>{const h=document.documentElement;document.getElementById('progressBar').style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100+'%';});
+function switchTab(b,id){const p=b.closest('.code-tabs');p.querySelectorAll('.code-tab-btn').forEach(x=>x.classList.remove('active'));p.querySelectorAll('.code-tab-content').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById(id).classList.add('active');}
+document.querySelectorAll('.quiz-q').forEach(q=>{const ans=+q.dataset.answer;q.querySelectorAll('.quiz-opt').forEach(o=>{o.onclick=()=>{if(q.dataset.done)return;q.dataset.done=1;const i=+o.dataset.idx,fb=q.querySelector('.quiz-feedback');q.querySelectorAll('.quiz-opt').forEach(x=>{if(+x.dataset.idx===ans)x.classList.add('correct');else if(+x.dataset.idx===i)x.classList.add('wrong');});if(i===ans){fb.className='quiz-feedback show correct-fb';fb.textContent='✓ '+(window.I18n&&window.I18n.get()==='en'?q.dataset.expEn:q.dataset.expZh);}else{fb.className='quiz-feedback show wrong-fb';fb.textContent='✗ '+(window.I18n&&window.I18n.get()==='en'?q.dataset.expEn:q.dataset.expZh);}};});});
+// FM benefit sim
+const cv=document.getElementById('fmCv'),ctx=cv.getContext('2d');
+function draw(){
+  const t=+document.getElementById('fmT').value, n=+document.getElementById('fmN').value;
+  document.getElementById('fmTv').textContent=t.toFixed(2);document.getElementById('fmNv').textContent=n.toFixed(1);
+  const w=cv.width=cv.offsetWidth,h=cv.height=cv.offsetHeight;
+  ctx.fillStyle='#eef5f7';ctx.fillRect(0,0,w,h);
+  // FM benefit: high when low data & complex; negative for simple & abundant data
+  const benefit=(t-0.3)*0.6 - (n-3)*0.15;
+  // draw bar
+  const cx=w/2, mid=h/2;
+  ctx.fillStyle='#cffafe';ctx.fillRect(20,mid-30,w-40,60);
+  const barW=Math.abs(benefit)*100;
+  ctx.fillStyle=benefit>0?'#0e7490':'#dc2626';
+  if(benefit>0) ctx.fillRect(cx,mid-30,Math.min(barW,(w-40)/2),60);
+  else ctx.fillRect(cx-Math.min(barW,(w-40)/2),mid-30,Math.min(barW,(w-40)/2),60);
+  ctx.strokeStyle='#94a3b8';ctx.beginPath();ctx.moveTo(cx,mid-40);ctx.lineTo(cx,mid+40);ctx.stroke();
+  ctx.fillStyle='#0f172a';ctx.font='11px sans-serif';
+  ctx.fillText('Classical wins ←',24,mid+50);
+  ctx.fillText('→ FM wins',w-100,mid+50);
+  const en=(window.I18n&&window.I18n.get()==='en');
+  let msg;
+  if(benefit>0.15) msg=en?'FM strongly beneficial':'FM 明顯有利';
+  else if(benefit>-0.05) msg=en?'FM marginal — try both':'FM 邊際 — 兩者都試';
+  else msg=en?'Classical methods preferred':'傳統方法較佳';
+  document.getElementById('fmS').textContent='FM benefit: '+msg;
+  document.getElementById('fmS').className='sim-stat '+(benefit>0.15?'pass':(benefit>-0.05?'warn':'fail'));
+}
+['fmT','fmN'].forEach(id=>document.getElementById(id).oninput=draw);
+window.addEventListener('resize',draw);document.addEventListener('langchange',draw);setTimeout(draw,50);
+</script>
+</body></html>
